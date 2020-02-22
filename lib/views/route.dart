@@ -12,10 +12,6 @@ class ActiveRoute extends StatefulWidget {
     this.activeRoute,
     this.changeRoute,
   }) : super(key: key);
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   @override
   ActiveRouteState createState() => ActiveRouteState();
@@ -26,19 +22,22 @@ class ActiveRouteState extends State<ActiveRoute> {
   final _formKey = GlobalKey<FormState>();
   bool isLoading = true;
 
-  /// A map of route field name -> a map of metadata about route detail fields,
-  /// for faster metadata lookups.
+  /// A map of a route's field's name -> another map of metadata about the
+  /// route's field. Useful for faster repeated metadata lookups.
   Map<String, Map<String, dynamic>> routeMeta;
-  /// A map of route field name -> text controller for field answer
+  /// A map of route field name -> text controller for user's response.
   Map<String, TextEditingController> routeFields;
 
 
-  /// A map of stopId -> metadata about this route
+  /// A map of a stop's ID -> another map of metadata about that stop. Useful
+  /// for faster repeated metadata lookups.
   Map<String, Map<String, dynamic>> stopMeta;
-  /// /// A map of stopId -> stop field name -> metadata about this route field
+  /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
+  /// metadata about the stop's field. Useful for faster metadata lookups.
   /// TODO: triple-deep map seems awful...consider refactoring, maybe splitting into another widget
   Map<String, Map<String, Map<String, dynamic>>> stopFieldsMeta;
-  /// A map of stopId -> stop field name -> text controller for field answer
+  /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
+  /// text controller for user's response.
   Map<String, Map<String, TextEditingController>> stopFields;
 
   @override
@@ -52,6 +51,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     Map<String, Map<String, Map<String, dynamic>>> stopFieldsMetaToAdd = {};
     Map<String, Map<String, TextEditingController>> stopFieldsToAdd = {};
 
+    /// Convert data from given widget into forms usable by build process.
     widget.activeRoute.fields.forEach((RecyclingRouteField rr) {
       if (routeMetaToAdd[rr.name] == null) {
         routeMetaToAdd[rr.name] = {};
@@ -94,7 +94,7 @@ class ActiveRouteState extends State<ActiveRoute> {
 
   @override
   void dispose() {
-    /// Clean up all active TextEditingController's
+    /// Clean up all active TextEditingController's.
     routeFields.forEach((String s, TextEditingController controller) {
       controller.dispose();
     });
@@ -108,7 +108,7 @@ class ActiveRouteState extends State<ActiveRoute> {
   }
 
   void _handleFinishRoute() async {
-    /// create a submission object from info gathered from user
+    /// Create a submission object from info entered by user.
     RecyclingRouteSubmission thisSubmission = RecyclingRouteSubmission(
       routeId: widget.activeRoute.id,
       routeFields: routeFields.map((String fieldName, TextEditingController fieldController) {
@@ -127,24 +127,26 @@ class ActiveRouteState extends State<ActiveRoute> {
       }).toList()
     );
 
-
+    /// Submit this route record, and direct user back to route selection if
+    /// successful.
     try {
       await submitRecord(thisSubmission);
+      Scaffold.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Route submitted. Thanks!')
+        )
+      );
+      widget.changeRoute(AppView.SELECT_ROUTE);
     } catch (e) {
       /// TODO: handle errors...
       print('Error happened.');
     }
-
-    Scaffold.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Route submitted. Thanks!')
-      )
-    );
-    widget.changeRoute(AppView.SELECT_ROUTE);
   }
 
+  /// Builds the upper portion of the screen, the part of the form that displays
+  /// route information, and gathers user entry about the route overall (and
+  /// not individual stops).
   Widget _buildRouteTitleCard() {
-
     List<Widget> theseFields = [];
     routeFields.forEach((String fieldName, TextEditingController thisController) {
       bool isOptional = routeMeta[fieldName]['optional'];
@@ -183,6 +185,8 @@ class ActiveRouteState extends State<ActiveRoute> {
     );
   }
 
+  /// Builds the part of the form that gathers user entry about stops along the
+  /// route.
   Widget _buildRows() {
     List<String> ids = stopFields.keys.toList();
     return ListView.builder(

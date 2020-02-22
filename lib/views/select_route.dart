@@ -12,10 +12,6 @@ class SelectRoute extends StatefulWidget {
     this.changeRoute,
     this.setActiveRoute
   }) : super(key: key);
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   @override
   _SelectRouteState createState() => _SelectRouteState();
@@ -25,12 +21,16 @@ class _SelectRouteState extends State<SelectRoute> {
 
   /// The route selected by user. Defaults to first route received.
   String selectedRoute;
+
+  /// List of all recycling routes available that crewmembers can go on.
   List<RecyclingRoute> recyclingRoutes = [];
+
   bool loading = true;
 
   @override
   initState() {
     getAllRoutes().then((List<RecyclingRoute> routes) {
+      /// Convert retrieved routes into formats usable by build process.
       setState(() {
         recyclingRoutes = routes;
         selectedRoute = routes.length >= 0
@@ -42,6 +42,8 @@ class _SelectRouteState extends State<SelectRoute> {
     super.initState();
   }
 
+  /// Handles user click to begin a route. Directs user to active route view,
+  /// starting a route session.
   _handleBeginRoute() {
     RecyclingRoute activeRoute = recyclingRoutes.firstWhere((RecyclingRoute thisRoute) {
       return thisRoute.name == selectedRoute;

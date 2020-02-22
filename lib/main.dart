@@ -12,7 +12,6 @@ import 'classes.dart';
 void main() => runApp(App());
 
 class App extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -27,10 +26,6 @@ class App extends StatelessWidget {
 
 class Main extends StatefulWidget {
   Main({Key key}) : super(key: key);
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   @override
   _MainState createState() => _MainState();
