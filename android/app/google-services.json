@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "53721343327",
+    "firebase_url": "https://route-recorder-de136.firebaseio.com",
+    "project_id": "route-recorder-de136",
+    "storage_bucket": "route-recorder-de136.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:53721343327:android:01b125cdb9cb843ec7c2ea",
+        "android_client_info": {
+          "package_name": "gt.dsc.route_recorder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "53721343327-h9v5eksvktjnqd4nvv0b9nsabvkdg544.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxHx1geWBJxpFClraLMHb8I3gVopA7rUc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "53721343327-h9v5eksvktjnqd4nvv0b9nsabvkdg544.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
