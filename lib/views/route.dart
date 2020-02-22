@@ -22,20 +22,19 @@ class ActiveRouteState extends State<ActiveRoute> {
   final _formKey = GlobalKey<FormState>();
   bool isLoading = true;
 
-  /// A map of a route's field's name -> another map of metadata about the
-  /// route's field. Useful for faster repeated metadata lookups.
-  Map<String, Map<String, dynamic>> routeMeta;
+  /// A map of a route's field's name -> its RecyclingRouteField. Useful for
+  /// faster repeated metadata lookups.
+  Map<String, RecyclingRouteField> routeMeta;
   /// A map of route field name -> text controller for user's response.
   Map<String, TextEditingController> routeFields;
 
-
-  /// A map of a stop's ID -> another map of metadata about that stop. Useful
-  /// for faster repeated metadata lookups.
-  Map<String, Map<String, dynamic>> stopMeta;
+  /// A map of a stop's ID -> its Stop. Useful for faster repeated metadata
+  /// lookups.
+  Map<String, Stop> stopMeta;
   /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
-  /// metadata about the stop's field. Useful for faster metadata lookups.
-  /// TODO: triple-deep map seems awful...consider refactoring, maybe splitting into another widget
-  Map<String, Map<String, Map<String, dynamic>>> stopFieldsMeta;
+  /// its StopField. Useful for faster metadata lookups.
+  /// TODO: triple-deep map seems awful...consider refactoring...somehow?
+  Map<String, Map<String, StopField>> stopFieldsMeta;
   /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
   /// text controller for user's response.
   Map<String, Map<String, TextEditingController>> stopFields;
@@ -45,34 +44,24 @@ class ActiveRouteState extends State<ActiveRoute> {
     if (widget.activeRoute == null) {
       widget.changeRoute(AppView.SELECT_ROUTE);
     }
-    Map<String, Map<String, dynamic>> routeMetaToAdd = {};
+    Map<String, RecyclingRouteField> routeMetaToAdd = {};
     Map<String, TextEditingController> routeFieldsToAdd = {};
-    Map<String, Map<String, dynamic>> stopMetaToAdd = {};
-    Map<String, Map<String, Map<String, dynamic>>> stopFieldsMetaToAdd = {};
+    Map<String, Stop> stopMetaToAdd = {};
+    Map<String, Map<String, StopField>> stopFieldsMetaToAdd = {};
     Map<String, Map<String, TextEditingController>> stopFieldsToAdd = {};
 
     /// Convert data from given widget into forms usable by build process.
     widget.activeRoute.fields.forEach((RecyclingRouteField rr) {
-      if (routeMetaToAdd[rr.name] == null) {
-        routeMetaToAdd[rr.name] = {};
-      }
-      routeMetaToAdd[rr.name]['optional'] = rr.isOptional;
+      routeMetaToAdd[rr.name] = rr;
       routeFieldsToAdd[rr.name] = TextEditingController();
     });
     widget.activeRoute.stops.forEach((Stop s) {
-      if (stopMetaToAdd[s.id] == null) {
-        stopMetaToAdd[s.id] = {};
-      }
-      stopMetaToAdd[s.id]['name'] = s.name;
-      stopMetaToAdd[s.id]['address'] = s.address;
+      stopMetaToAdd[s.id] = s;
       widget.activeRoute.stopFields.forEach((StopField sf) {
         if (stopFieldsMetaToAdd[s.id] == null) {
           stopFieldsMetaToAdd[s.id] = {};
         }
-        if (stopFieldsMetaToAdd[s.id][sf.name] == null) {
-          stopFieldsMetaToAdd[s.id][sf.name] = {};
-        }
-        stopFieldsMetaToAdd[s.id][sf.name]['optional'] = sf.isOptional;
+        stopFieldsMetaToAdd[s.id][sf.name] = sf;
 
         if (stopFieldsToAdd[s.id] == null) {
           stopFieldsToAdd[s.id] = {};
@@ -149,7 +138,7 @@ class ActiveRouteState extends State<ActiveRoute> {
   Widget _buildRouteTitleCard() {
     List<Widget> theseFields = [];
     routeFields.forEach((String fieldName, TextEditingController thisController) {
-      bool isOptional = routeMeta[fieldName]['optional'];
+      bool isOptional = routeMeta[fieldName].isOptional;
       theseFields.add(
         Row(
           children: <Widget>[
@@ -197,7 +186,7 @@ class ActiveRouteState extends State<ActiveRoute> {
 
         List<Widget> rowElements = [];
         theseControllers.forEach((String fieldName, TextEditingController thisController) {
-          bool isOptional = stopFieldsMeta[thisStopId][fieldName]['optional'];
+          bool isOptional = stopFieldsMeta[thisStopId][fieldName].isOptional;
           rowElements.add(
             Expanded(
               child: TextFormField(
@@ -217,7 +206,7 @@ class ActiveRouteState extends State<ActiveRoute> {
         });
         return Row(
           children: <Widget>[
-            Text(stopMeta[thisStopId]['name']),
+            Text(stopMeta[thisStopId].name),
             ...rowElements
           ],
         );

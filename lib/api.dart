@@ -9,7 +9,7 @@ Future<List<RecyclingRoute>> getAllRoutes() async {
 }
 
 Future<void> submitRecord(RecyclingRouteSubmission record) {
-
+  print(record);
   /// For now, don't actually submit this record
   return Future.delayed(const Duration(milliseconds: 1000), () {
     print('submitted');
