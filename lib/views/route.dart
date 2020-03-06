@@ -1,5 +1,3 @@
-// TODO: test on galaxy tab!
-
 import 'package:flutter/material.dart';
 import 'package:route_recorder/api.dart';
 import 'package:route_recorder/classes.dart';
@@ -42,7 +40,6 @@ class ActiveRouteState extends State<ActiveRoute> {
   Map<String, Stop> stopMeta;
   /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
   /// its StopField. Useful for faster metadata lookups.
-  /// TODO: triple-deep map seems awful...consider refactoring...somehow?
   Map<String, Map<String, StopField>> stopFieldsMeta;
   /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
   /// text controller for user's response.
@@ -286,6 +283,70 @@ class ActiveRouteState extends State<ActiveRoute> {
   /// route.
   Widget _buildStops() {
     List<String> ids = stopFields.keys.toList();
+    return Column(
+      children: ids.map((String thisStopId) {
+        Map<String, TextEditingController> theseControllers = stopFields[thisStopId];
+        List<Widget> rowElements = [];
+        theseControllers.forEach((String fieldName, TextEditingController thisController) {
+          bool isOptional = stopFieldsMeta[thisStopId][fieldName].isOptional;
+          rowElements.add(
+            TextFormField(
+              controller: thisController,
+              validator: (value) {
+                if (value.isEmpty && !isOptional) {
+                  return 'Please enter a $fieldName.';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: isOptional ? '$fieldName (optional)' : fieldName
+              )
+            )
+          );
+        });
+        return Card(
+          child: Container(
+            padding: const EdgeInsets.all(10.0),
+            child: Row(
+              children: <Widget>[
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.3,
+                  child: Container(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: <Widget>[
+                        Text(
+                          stopMeta[thisStopId].name,
+                          style: cardTextStyle.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        stopMeta[thisStopId].address != null && stopMeta[thisStopId].address.trim().length > 0
+                          ? Text(
+                              'Address: ${stopMeta[thisStopId].address}',
+                              style: cardTextStyle.copyWith(
+                                fontSize: cardTextStyle.fontSize - 2.0
+                              ),
+                              textAlign: TextAlign.center,
+                            )
+                          : null
+                      ].where((o) => o != null).toList(),
+                    ),
+                  ),
+                ),
+                Expanded(
+                 child: Column(
+                    children: rowElements
+                  )
+                )
+              ],
+            ),
+          ),
+        );
+      }).toList()
+    );
+
     return ListView.builder(
       itemCount: stopFields.length,
       itemBuilder: (BuildContext context, int index) {
@@ -327,7 +388,7 @@ class ActiveRouteState extends State<ActiveRoute> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        stopMeta[thisStopId].address != null
+                        stopMeta[thisStopId].address != null && stopMeta[thisStopId].address.trim().length > 0
                           ? Text(
                               'Address: ${stopMeta[thisStopId].address}',
                               style: cardTextStyle.copyWith(
@@ -395,20 +456,20 @@ class ActiveRouteState extends State<ActiveRoute> {
       return Loading();
     }
 
-    return Container(
-      padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          children: <Widget>[
-            _buildRouteTitleCard(),
-            Expanded(
-              child: _buildStops()
-            ),
-            _buildSubmissionArea(context)
-          ],
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: <Widget>[
+              _buildRouteTitleCard(),
+              _buildStops(),
+              _buildSubmissionArea(context)
+            ],
+          ),
         ),
-      ),
+      )
     );
   }
 }
