@@ -2,19 +2,74 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:route_recorder/classes.dart';
 
 Firestore db = Firestore.instance;
+String recordModelsCollectionName = 'test_models';
+String recordsCollectionName = 'test_records';
 
-Future<List<RecyclingRoute>> getAllRoutes() async {
-  /// return sample routes for now
-  return generateSampleRoutes();
+Future<List<RecyclingRoute>> getAllRoutes() {
+  return db.collection(recordModelsCollectionName).getDocuments().then((QuerySnapshot snap) {
+    return snap.documents.map((DocumentSnapshot ds) {
+      return RecyclingRoute(
+        id: ds.documentID,
+        name: ds.data['name'],
+        fields: ds.data['fields'].map((dynamic fieldMap) {
+          return RecyclingRouteField(
+            name: fieldMap['name'],
+            isOptional: fieldMap['optional'] ?? false
+          );
+        }).toList().cast<RecyclingRouteField>(),
+        stops: ds.data['stopData']['stops'].map((dynamic stopMap) {
+          return Stop(
+            id: stopMap['id'],
+            name: stopMap['name'],
+            address: stopMap['address'] ?? null,
+          );
+        }).toList().cast<Stop>(),
+        stopFields: ds.data['stopData']['fields'].map((dynamic stopFieldMap) {
+          return StopField(
+            name: stopFieldMap['name'],
+            isOptional: stopFieldMap['optional'] ?? false
+          );
+        }).toList().cast<StopField>(),
+      );
+    }).toList();
+  });
 }
 
-Future<void> submitRecord(RecyclingRouteSubmission record) {
-  print(record);
-  /// For now, don't actually submit this record
-  return Future.delayed(const Duration(milliseconds: 1000), () {
-    print('submitted');
-    return null;
-  });
+/// Submits [record] to Firebase,
+Future<dynamic> submitRecord(RecyclingRouteSubmission record) {
+  /// Convert [record] into a form usable by Firebase
+  Map<String, dynamic> toAdd = {
+    'routeId': record.routeId,
+    'startTime': record.startTime,
+    'endTime': record.endTime,
+    ...Map.from(record.routeFields),
+    'stops': record.stops.map((StopSubmission ss) {
+      return {
+        'id': ss.stopId,
+        ...ss.stopFields
+      };
+//      Map<String, String> stopFields = {
+//        'id': ss.stopId,
+//      };
+//      ss.stopFields.forEach((String key, String value) {
+//        stopFields[key] = value;
+//      });
+//      return stopFields;
+    }).toList()
+  };
+//  record.routeFields.forEach((String key, String value) {
+//    toAdd[key] = value;
+//  });
+//  toAdd['stops'] = record.stops.map((StopSubmission ss) {
+//    Map<String, String> stopFields = {
+//      'id': ss.stopId,
+//    };
+//    ss.stopFields.forEach((String key, String value) {
+//      stopFields[key] = value;
+//    });
+//    return stopFields;
+//  }).toList();
+  return db.collection(recordsCollectionName).add(toAdd);
 }
 
 List<RecyclingRoute> generateSampleRoutes() {

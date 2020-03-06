@@ -1,7 +1,9 @@
+// TODO: test on galaxy tab!
 
 import 'package:flutter/material.dart';
 import 'package:route_recorder/api.dart';
 import 'package:route_recorder/classes.dart';
+import 'package:route_recorder/views/loading.dart';
 
 class ActiveRoute extends StatefulWidget {
   final RecyclingRoute activeRoute;
@@ -17,10 +19,17 @@ class ActiveRoute extends StatefulWidget {
   ActiveRouteState createState() => ActiveRouteState();
 }
 
+enum ConfirmAction { CANCEL, CONFIRM }
+
 class ActiveRouteState extends State<ActiveRoute> {
+
+  TextStyle cardTextStyle = TextStyle(
+    fontSize: 18.0
+  );
 
   final _formKey = GlobalKey<FormState>();
   bool isLoading = true;
+  bool loadingAfterButtonPress = false;
 
   /// A map of a route's field's name -> its RecyclingRouteField. Useful for
   /// faster repeated metadata lookups.
@@ -38,6 +47,8 @@ class ActiveRouteState extends State<ActiveRoute> {
   /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
   /// text controller for user's response.
   Map<String, Map<String, TextEditingController>> stopFields;
+  /// The time when this route was started by the user.
+  DateTime startTime;
 
   @override
   void initState() {
@@ -77,6 +88,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       stopFields = stopFieldsToAdd;
       stopFieldsMeta = stopFieldsMetaToAdd;
       isLoading = false;
+      startTime = DateTime.now();
     });
     super.initState();
   }
@@ -96,10 +108,43 @@ class ActiveRouteState extends State<ActiveRoute> {
     super.dispose();
   }
 
-  void _handleFinishRoute() async {
+  void _handleCancelRoute(BuildContext context) {
+    showDialog<ConfirmAction>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Are you sure you want to cancel? All entered data will be lost.'),
+          actions: <Widget>[
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CANCEL);
+              },
+              child: const Text('NO'),
+            ),
+            FlatButton(
+              onPressed: () {
+                widget.changeRoute(AppView.SELECT_ROUTE);
+                Navigator.of(context).pop(ConfirmAction.CONFIRM);
+              },
+              child: const Text('YES'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
+  void submitRoute() async {
+    setState(() {
+      loadingAfterButtonPress = true;
+    });
+
     /// Create a submission object from info entered by user.
     RecyclingRouteSubmission thisSubmission = RecyclingRouteSubmission(
       routeId: widget.activeRoute.id,
+      startTime: startTime,
+      endTime: DateTime.now(),
       routeFields: routeFields.map((String fieldName, TextEditingController fieldController) {
         return MapEntry(fieldName, fieldController.text);
       }),
@@ -109,7 +154,7 @@ class ActiveRouteState extends State<ActiveRoute> {
 
         return StopSubmission(
           stopId: thisStopId,
-          routeFields: thisStopDetails.map((String stopFieldName, TextEditingController thisController) {
+          stopFields: thisStopDetails.map((String stopFieldName, TextEditingController thisController) {
             return MapEntry(stopFieldName, thisController.text);
           }),
         );
@@ -120,16 +165,68 @@ class ActiveRouteState extends State<ActiveRoute> {
     /// successful.
     try {
       await submitRecord(thisSubmission);
-      Scaffold.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Route submitted. Thanks!')
-        )
-      );
-      widget.changeRoute(AppView.SELECT_ROUTE);
     } catch (e) {
-      /// TODO: handle errors...
-      print('Error happened.');
+      setState(() {
+        loadingAfterButtonPress = false;
+      });
+      print('error: $e');
+      showDialog<ConfirmAction>(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Something went wrong. Wait a bit, then try to submit it again. Try moving to an area with a better connection.\nIf this issue persists, keep this screen open or write it down, and report the problem to your supervisors.'),
+            actions: <Widget>[
+              FlatButton(
+                onPressed: () {
+                  Navigator.of(context).pop(ConfirmAction.CANCEL);
+                },
+                child: const Text('OKAY'),
+              ),
+            ],
+          );
+        }
+      );
+      return;
     }
+    Scaffold.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Route submitted. Thanks!')
+      )
+    );
+    widget.changeRoute(AppView.SELECT_ROUTE);
+  }
+
+  void _handleFinishRoute(BuildContext context) async {
+    /// Validation check.
+    if (!_formKey.currentState.validate()) {
+      return;
+    }
+
+    showDialog<ConfirmAction>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Are you sure you want to submit this?'),
+          actions: <Widget>[
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CANCEL);
+              },
+              child: const Text('CANCEL'),
+            ),
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CONFIRM);
+                submitRoute();
+              },
+              child: const Text('CONFIRM'),
+            ),
+          ],
+        );
+      }
+    );
   }
 
   /// Builds the upper portion of the screen, the part of the form that displays
@@ -142,52 +239,6 @@ class ActiveRouteState extends State<ActiveRoute> {
       theseFields.add(
         Row(
           children: <Widget>[
-            Text('$fieldName:'),
-            Expanded(
-              child: TextFormField(
-                controller: thisController,
-                validator: (value) {
-                  if (value.isEmpty && !isOptional) {
-                    return 'Please enter a $fieldName.';
-                  }
-                  return null;
-                },
-                decoration: isOptional
-                    ? InputDecoration(
-                    hintText: '(optional)'
-                )
-                    : null,
-              )
-            )
-          ],
-        )
-      );
-    });
-
-    return Card(
-      child: Column(
-        children: <Widget>[
-          Text(widget.activeRoute.name),
-          ...theseFields
-        ]
-      )
-    );
-  }
-
-  /// Builds the part of the form that gathers user entry about stops along the
-  /// route.
-  Widget _buildRows() {
-    List<String> ids = stopFields.keys.toList();
-    return ListView.builder(
-      itemCount: stopFields.length,
-      itemBuilder: (BuildContext context, int index) {
-        String thisStopId = ids[index];
-        Map<String, TextEditingController> theseControllers = stopFields[thisStopId];
-
-        List<Widget> rowElements = [];
-        theseControllers.forEach((String fieldName, TextEditingController thisController) {
-          bool isOptional = stopFieldsMeta[thisStopId][fieldName].isOptional;
-          rowElements.add(
             Expanded(
               child: TextFormField(
                 controller: thisController,
@@ -198,41 +249,165 @@ class ActiveRouteState extends State<ActiveRoute> {
                   return null;
                 },
                 decoration: InputDecoration(
-                  hintText: isOptional ? '$fieldName (optional)' : fieldName
-                )
+                  hintText: isOptional
+                    ? '$fieldName (optional)'
+                    : fieldName
+                ),
+              )
+            )
+          ],
+        )
+      );
+    });
+
+    return Card(
+      child: Container(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          children: <Widget>[
+            Text(
+              widget.activeRoute.name,
+              style: cardTextStyle,
+            ),
+            Text(
+              'Your start and end times for this route will be recorded automatically.',
+              style: cardTextStyle.copyWith(
+                fontSize: cardTextStyle.fontSize - 4.0
+              ),
+            ),
+            ...theseFields
+          ]
+        )
+      )
+    );
+  }
+
+  /// Builds the part of the form that gathers user entry about stops along the
+  /// route.
+  Widget _buildStops() {
+    List<String> ids = stopFields.keys.toList();
+    return ListView.builder(
+      itemCount: stopFields.length,
+      itemBuilder: (BuildContext context, int index) {
+        String thisStopId = ids[index];
+        Map<String, TextEditingController> theseControllers = stopFields[thisStopId];
+        List<Widget> rowElements = [];
+        theseControllers.forEach((String fieldName, TextEditingController thisController) {
+          bool isOptional = stopFieldsMeta[thisStopId][fieldName].isOptional;
+          rowElements.add(
+            TextFormField(
+              controller: thisController,
+              validator: (value) {
+                if (value.isEmpty && !isOptional) {
+                  return 'Please enter a $fieldName.';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: isOptional ? '$fieldName (optional)' : fieldName
               )
             )
           );
         });
-        return Row(
-          children: <Widget>[
-            Text(stopMeta[thisStopId].name),
-            ...rowElements
-          ],
+        return Card(
+          child: Container(
+            padding: const EdgeInsets.all(10.0),
+            child: Row(
+              children: <Widget>[
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.3,
+                  child: Container(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: <Widget>[
+                        Text(
+                          stopMeta[thisStopId].name,
+                          style: cardTextStyle.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        stopMeta[thisStopId].address != null
+                          ? Text(
+                              'Address: ${stopMeta[thisStopId].address}',
+                              style: cardTextStyle.copyWith(
+                                fontSize: cardTextStyle.fontSize - 2.0
+                              ),
+                              textAlign: TextAlign.center,
+                            )
+                          : null
+                      ].where((o) => o != null).toList(),
+                    ),
+                  ),
+                ),
+                Expanded(
+                 child: Column(
+                    children: rowElements
+                  )
+                )
+              ],
+            ),
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildSubmissionArea(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.only(right: 10),
+              child: RaisedButton(
+                child: Text(
+                  'Cancel',
+                  style: cardTextStyle,
+                ),
+                onPressed: loadingAfterButtonPress
+                  ? null
+                  : () => _handleCancelRoute(context)
+              ),
+            ),
+            RaisedButton(
+              child: Text(
+                'Finish',
+                style: cardTextStyle,
+              ),
+              onPressed: loadingAfterButtonPress
+                ? null
+                : () => _handleFinishRoute(context),
+            ),
+          ]
+        ),
+        loadingAfterButtonPress
+          ? Text('Loading...')
+          : null
+      ].where((o) => o != null).toList(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Text('Loading...');
+      return Loading();
     }
 
-    return Form(
-      key: _formKey,
-      child: Column(
-        children: <Widget>[
-          _buildRouteTitleCard(),
-          Expanded(
-              child: _buildRows()
-          ),
-          RaisedButton(
-            child: Text('Finish'),
-            onPressed: _handleFinishRoute,
-          )
-        ],
+    return Container(
+      padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: <Widget>[
+            _buildRouteTitleCard(),
+            Expanded(
+              child: _buildStops()
+            ),
+            _buildSubmissionArea(context)
+          ],
+        ),
       ),
     );
   }

@@ -27,8 +27,6 @@ class RecyclingRoute {
   final List<RecyclingRouteField> fields;
   final List<Stop> stops;
   final List<StopField> stopFields;
-  DateTime checkinTime;
-  DateTime checkoutTime;
 
   RecyclingRoute({
     this.id,
@@ -36,16 +34,7 @@ class RecyclingRoute {
     this.fields,
     this.stops,
     this.stopFields,
-    checkinTime,
-    checkoutTime,
-  }) {
-    // don't allow for checkinTimes unless a checkoutTime is also specified
-    if (checkinTime != null && checkoutTime == null) {
-      throw new RangeError('Record with a check-in time cannot be created without a check-out time.');
-    }
-    this.checkoutTime = checkoutTime;
-    this.checkinTime = checkinTime;
-  }
+  });
 }
 
 class Stop {
@@ -63,6 +52,8 @@ class Stop {
 class RecyclingRouteSubmission {
   String id;
   final String routeId;
+  DateTime startTime;
+  DateTime endTime;
   final Map<String, String> routeFields;
   final List<StopSubmission> stops;
 
@@ -70,15 +61,24 @@ class RecyclingRouteSubmission {
     this.id,
     this.routeId,
     this.routeFields,
-    this.stops
-  });
+    this.stops,
+    endTime,
+    startTime,
+  }) {
+    // don't allow for endTime unless a startTime is also specified
+    if (endTime != null && startTime == null) {
+      throw new RangeError('Record with a check-in time cannot be created without a check-out time.');
+    }
+    this.startTime = startTime;
+    this.endTime = endTime;
+  }
 }
 class StopSubmission {
   String stopId;
-  final Map<String, String> routeFields;
+  final Map<String, String> stopFields;
 
   StopSubmission({
     this.stopId,
-    this.routeFields
+    this.stopFields
   });
 }

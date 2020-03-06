@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:route_recorder/api.dart';
 import 'package:route_recorder/classes.dart';
+import 'package:route_recorder/views/loading.dart';
 
 class SelectRoute extends StatefulWidget {
   final Function changeRoute;
@@ -55,33 +56,66 @@ class _SelectRouteState extends State<SelectRoute> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return Text('Loading...');
+      return Loading();
     }
     if (recyclingRoutes.length == 0) {
-      return Text('There are no route options available. This may be due to an error; contact your administrators.');
-    }
-    return Column(
-      children: <Widget>[
-        Text('Select Route'),
-        DropdownButton<String>(
-          value: selectedRoute,
-          icon: Icon(Icons.arrow_drop_down),
-          onChanged: (String newValue) {
-            setState(() {
-              selectedRoute = newValue;
-            });
-          },
-          items: recyclingRoutes.map<DropdownMenuItem<String>>((RecyclingRoute thisRoute) => DropdownMenuItem<String>(
-              value: thisRoute.name,
-              child: Text(thisRoute.name),
-            )
-          ).toList(),
-        ),
-        RaisedButton(
-          onPressed: _handleBeginRoute,
-          child: Text('Begin Route'),
+      return Container(
+        alignment: Alignment.center,
+        padding: EdgeInsets.only(left: 75.0, right: 75.0),
+        child: Text('There are no route options available. This may be an error; if you believe it is, contact your administrators.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24.0
+          ),
         )
-      ],
+      );
+    }
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.only(left: 20.0, right: 20.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.7,
+            child: Text(
+              'As you begin to go on a route, select a route below, then tap "Begin Route".',
+              style: TextStyle(
+                fontSize: 18.0
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          DropdownButton<String>(
+            value: selectedRoute,
+            icon: Icon(Icons.arrow_drop_down),
+            style: TextStyle(
+              fontSize: 18.0,
+              color: Colors.black
+            ),
+            iconSize: 18.0,
+            onChanged: (String newValue) {
+              setState(() {
+                selectedRoute = newValue;
+              });
+            },
+            items: recyclingRoutes.map<DropdownMenuItem<String>>((RecyclingRoute thisRoute) => DropdownMenuItem<String>(
+                value: thisRoute.name,
+                child: Text(thisRoute.name),
+              )
+            ).toList(),
+          ),
+          RaisedButton(
+            onPressed: _handleBeginRoute,
+            child: Text(
+              'Begin Route',
+              style: TextStyle(
+                fontSize: 18.0
+              ),
+            ),
+          )
+        ],
+      )
     );
   }
 }
