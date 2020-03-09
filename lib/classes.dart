@@ -3,19 +3,23 @@ enum AppView { SELECT_ROUTE, ACTIVE_ROUTE }
 
 class RecyclingRouteField {
   final String name;
+  final String type;
   final bool isOptional;
 
   RecyclingRouteField({
     this.name,
+    this.type,
     this.isOptional
   });
 }
 class StopField {
   final String name;
+  final String type;
   final bool isOptional;
 
   StopField({
     this.name,
+    this.type,
     this.isOptional
   });
 }

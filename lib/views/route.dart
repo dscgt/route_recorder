@@ -233,6 +233,9 @@ class ActiveRouteState extends State<ActiveRoute> {
     List<Widget> theseFields = [];
     routeFields.forEach((String fieldName, TextEditingController thisController) {
       bool isOptional = routeMeta[fieldName].isOptional;
+      TextInputType thisKeyboardType = routeMeta[fieldName].type == 'number'
+        ? TextInputType.number
+        : TextInputType.text;
       theseFields.add(
         Row(
           children: <Widget>[
@@ -250,6 +253,7 @@ class ActiveRouteState extends State<ActiveRoute> {
                     ? '$fieldName (optional)'
                     : fieldName
                 ),
+                keyboardType: thisKeyboardType,
               )
             )
           ],
@@ -289,6 +293,9 @@ class ActiveRouteState extends State<ActiveRoute> {
         List<Widget> rowElements = [];
         theseControllers.forEach((String fieldName, TextEditingController thisController) {
           bool isOptional = stopFieldsMeta[thisStopId][fieldName].isOptional;
+          TextInputType thisKeyboardType = stopFieldsMeta[thisStopId][fieldName].type == 'number'
+            ? TextInputType.number
+            : TextInputType.text;
           rowElements.add(
             TextFormField(
               controller: thisController,
@@ -300,7 +307,8 @@ class ActiveRouteState extends State<ActiveRoute> {
               },
               decoration: InputDecoration(
                 hintText: isOptional ? '$fieldName (optional)' : fieldName
-              )
+              ),
+              keyboardType: thisKeyboardType,
             )
           );
         });
@@ -345,72 +353,6 @@ class ActiveRouteState extends State<ActiveRoute> {
           ),
         );
       }).toList()
-    );
-
-    return ListView.builder(
-      itemCount: stopFields.length,
-      itemBuilder: (BuildContext context, int index) {
-        String thisStopId = ids[index];
-        Map<String, TextEditingController> theseControllers = stopFields[thisStopId];
-        List<Widget> rowElements = [];
-        theseControllers.forEach((String fieldName, TextEditingController thisController) {
-          bool isOptional = stopFieldsMeta[thisStopId][fieldName].isOptional;
-          rowElements.add(
-            TextFormField(
-              controller: thisController,
-              validator: (value) {
-                if (value.isEmpty && !isOptional) {
-                  return 'Please enter a $fieldName.';
-                }
-                return null;
-              },
-              decoration: InputDecoration(
-                hintText: isOptional ? '$fieldName (optional)' : fieldName
-              )
-            )
-          );
-        });
-        return Card(
-          child: Container(
-            padding: const EdgeInsets.all(10.0),
-            child: Row(
-              children: <Widget>[
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.3,
-                  child: Container(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      children: <Widget>[
-                        Text(
-                          stopMeta[thisStopId].name,
-                          style: cardTextStyle.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        stopMeta[thisStopId].address != null && stopMeta[thisStopId].address.trim().length > 0
-                          ? Text(
-                              'Address: ${stopMeta[thisStopId].address}',
-                              style: cardTextStyle.copyWith(
-                                fontSize: cardTextStyle.fontSize - 2.0
-                              ),
-                              textAlign: TextAlign.center,
-                            )
-                          : null
-                      ].where((o) => o != null).toList(),
-                    ),
-                  ),
-                ),
-                Expanded(
-                 child: Column(
-                    children: rowElements
-                  )
-                )
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
