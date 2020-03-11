@@ -135,6 +135,7 @@ class ActiveRouteState extends State<ActiveRoute> {
   void submitRoute() async {
     setState(() {
       loadingAfterButtonPress = true;
+      isLoading = true;
     });
 
     /// Create a submission object from info entered by user.
@@ -160,11 +161,13 @@ class ActiveRouteState extends State<ActiveRoute> {
 
     /// Submit this route record, and direct user back to route selection if
     /// successful.
+    bool directlySuccessful;
     try {
-      await submitRecord(thisSubmission);
+      directlySuccessful = await submitRecord(thisSubmission);
     } catch (e) {
       setState(() {
         loadingAfterButtonPress = false;
+        isLoading = false;
       });
       print('error: $e');
       showDialog<ConfirmAction>(
@@ -186,11 +189,19 @@ class ActiveRouteState extends State<ActiveRoute> {
       );
       return;
     }
-    Scaffold.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Route submitted. Thanks!')
-      )
-    );
+    if (directlySuccessful) {
+      Scaffold.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Route submitted. Thanks!')
+        )
+      );
+    } else {
+      Scaffold.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Route will be submitted once you are connected to the Internet.')
+        )
+      );
+    }
     widget.changeRoute(AppView.SELECT_ROUTE);
   }
 

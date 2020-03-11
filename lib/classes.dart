@@ -1,6 +1,21 @@
 
 enum AppView { SELECT_ROUTE, ACTIVE_ROUTE }
 
+/// Stores information regarding a retrieval of all routes.
+class RoutesRetrieval {
+  /// Routes that were successfully retrieved.
+  final List<RecyclingRoute> routes;
+
+  /// The cache status of the routes; a value of "true" indicates that [routes]
+  /// were retrieved from cache, indicating no internet connection.
+  final bool fromCache;
+
+  RoutesRetrieval({
+    this.routes,
+    this.fromCache
+  });
+}
+
 class RecyclingRouteField {
   final String name;
   final String type;

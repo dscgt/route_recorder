@@ -26,21 +26,48 @@ class _SelectRouteState extends State<SelectRoute> {
   /// List of all recycling routes available that crewmembers can go on.
   List<RecyclingRoute> recyclingRoutes = [];
 
+  /// Information to display to the user. Is also displayed to user when there
+  /// is an error.
+  String infoText = '';
+
+  /// Loading status of the page.
   bool loading = true;
+
+  /// Error status of the page.
+  bool errored = false;
+
 
   @override
   initState() {
-    getAllRoutes().then((List<RecyclingRoute> routes) {
+    attemptGetRoutes();
+    super.initState();
+  }
+
+  attemptGetRoutes() {
+    getAllRoutes().then((RoutesRetrieval mostRecentRoutes) {
+
       /// Convert retrieved routes into formats usable by build process.
       setState(() {
-        recyclingRoutes = routes;
-        selectedRoute = routes.length >= 0
+        recyclingRoutes = mostRecentRoutes.routes;
+        selectedRoute = mostRecentRoutes.routes.length >= 0
           ? recyclingRoutes[0].name
           : null;
         loading = false;
+        infoText = mostRecentRoutes.fromCache
+          ? 'We had some connection problems getting the most recent routes. The routes you see may be out of date.'
+          : '';
+        errored = false;
+      });
+    }).catchError((Object error, StackTrace st) {
+      /// Convert retrieved routes into formats usable by build process.
+      setState(() {
+        print('error: $error');
+        print('Stacktrace: $st');
+        infoText = error.toString();
+        errored = true;
+        loading = false;
       });
     });
-    super.initState();
   }
 
   /// Handles user click to begin a route. Directs user to active route view,
@@ -53,10 +80,51 @@ class _SelectRouteState extends State<SelectRoute> {
     widget.changeRoute(AppView.ACTIVE_ROUTE);
   }
 
+  /// View for when this widget encounters an error. Utilizes infoText.
+  _buildErrorMessage() {
+    return Container(
+      alignment: Alignment.center,
+      padding: EdgeInsets.only(left: 75.0, right: 75.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text('Sorry! We encountered an error getting page routes.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20.0
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.only(top: 8, bottom: 8),
+            child: Text('Here\'s some more information: $infoText',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.0
+              ),
+            ),
+          ),
+          Text('Wait a moment, then retry by hitting the button below. If the problem persists, contact an administrator.'),
+          RaisedButton(
+            onPressed: () {
+              setState(() {
+                loading = true;
+              });
+              attemptGetRoutes();
+            },
+            child: Text('Retry'),
+          )
+        ],
+      )
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
       return Loading();
+    }
+    if (errored) {
+      return _buildErrorMessage();
     }
     if (recyclingRoutes.length == 0) {
       return Container(
@@ -76,6 +144,17 @@ class _SelectRouteState extends State<SelectRoute> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
+          Container(
+            child: Text(
+              infoText,
+              style: TextStyle(
+                fontSize: 14.0,
+                color: Colors.red,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            padding: EdgeInsets.only(bottom: 5.0),
+          ),
           SizedBox(
             width: MediaQuery.of(context).size.width * 0.7,
             child: Text(
