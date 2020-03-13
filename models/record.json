@@ -1,0 +1,21 @@
+{
+  "startTime": "startTime_here",
+  "endTime": "endTime_here",
+  "properties": {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3",
+  },
+  "stops": [
+    {
+      "title": "title_here",
+      "properties": {
+        "key1": "value1",
+        "key2": "value2",
+        "key3": "value3",
+      }
+    }
+  ],
+  "modelId": "modelId_here",
+  "modelTitle": "modelTitle_here",
+}

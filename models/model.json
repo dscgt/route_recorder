@@ -1,0 +1,30 @@
+{
+  "fields": [
+    {
+      "title": "title_here",
+      "type": "type_here",
+      "optional": false,
+      "groupId": "groupId_here",
+    }
+  ],
+  "title": "title_here",
+  "stopData": {
+    "fields": [
+      {
+        "title": "title_here",
+        "type": "type_here",
+        "optional": false,
+        "groupId": "groupId_here",
+      }
+    ],
+    "stops": [
+      {
+        "title": "title_here",
+        "description": "description_here",
+        "exclude": [
+          "title_here"
+        ]
+      }
+    ]
+  }
+}
