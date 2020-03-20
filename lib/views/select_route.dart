@@ -24,7 +24,7 @@ class _SelectRouteState extends State<SelectRoute> {
   String selectedRoute;
 
   /// List of all recycling routes available that crewmembers can go on.
-  List<RecyclingRoute> recyclingRoutes = [];
+  List<Model> recyclingRoutes = [];
 
   /// Information to display to the user. Is also displayed to user when there
   /// is an error.
@@ -45,12 +45,11 @@ class _SelectRouteState extends State<SelectRoute> {
 
   attemptGetRoutes() {
     getAllRoutes().then((RoutesRetrieval mostRecentRoutes) {
-
       /// Convert retrieved routes into formats usable by build process.
       setState(() {
         recyclingRoutes = mostRecentRoutes.routes;
-        selectedRoute = mostRecentRoutes.routes.length >= 0
-          ? recyclingRoutes[0].name
+        selectedRoute = mostRecentRoutes.routes.length > 0
+          ? recyclingRoutes[0].title
           : null;
         loading = false;
         infoText = mostRecentRoutes.fromCache
@@ -73,8 +72,8 @@ class _SelectRouteState extends State<SelectRoute> {
   /// Handles user click to begin a route. Directs user to active route view,
   /// starting a route session.
   _handleBeginRoute() {
-    RecyclingRoute activeRoute = recyclingRoutes.firstWhere((RecyclingRoute thisRoute) {
-      return thisRoute.name == selectedRoute;
+    Model activeRoute = recyclingRoutes.firstWhere((Model thisRoute) {
+      return thisRoute.title == selectedRoute;
     });
     widget.setActiveRoute(activeRoute);
     widget.changeRoute(AppView.ACTIVE_ROUTE);
@@ -178,9 +177,9 @@ class _SelectRouteState extends State<SelectRoute> {
                 selectedRoute = newValue;
               });
             },
-            items: recyclingRoutes.map<DropdownMenuItem<String>>((RecyclingRoute thisRoute) => DropdownMenuItem<String>(
-                value: thisRoute.name,
-                child: Text(thisRoute.name),
+            items: recyclingRoutes.map<DropdownMenuItem<String>>((Model thisRoute) => DropdownMenuItem<String>(
+                value: thisRoute.title,
+                child: Text(thisRoute.title),
               )
             ).toList(),
           ),

@@ -34,7 +34,7 @@ class Main extends StatefulWidget {
 class _MainState extends State<Main> {
 
   AppView currentView = AppView.SELECT_ROUTE;
-  RecyclingRoute activeRoute;
+  Model activeRoute;
 
   void changeRoute(AppView route) {
     setState(() {
@@ -42,7 +42,7 @@ class _MainState extends State<Main> {
     });
   }
 
-  void setActiveRoute(RecyclingRoute route) {
+  void setActiveRoute(Model route) {
     setState(() {
       activeRoute = route;
     });

@@ -4,7 +4,7 @@ import 'package:route_recorder/classes.dart';
 import 'package:route_recorder/views/loading.dart';
 
 class ActiveRoute extends StatefulWidget {
-  final RecyclingRoute activeRoute;
+  final Model activeRoute;
   final Function changeRoute;
 
   ActiveRoute({
@@ -29,19 +29,19 @@ class ActiveRouteState extends State<ActiveRoute> {
   bool isLoading = true;
   bool loadingAfterButtonPress = false;
 
-  /// A map of a route's field's name -> its RecyclingRouteField. Useful for
+  /// A map of a route's field's name -> its ModelField. Useful for
   /// faster repeated metadata lookups.
-  Map<String, RecyclingRouteField> routeMeta;
+  Map<String, ModelField> routeMeta;
   /// A map of route field name -> text controller for user's response.
   Map<String, TextEditingController> routeFields;
 
-  /// A map of a stop's ID -> its Stop. Useful for faster repeated metadata
+  /// A map of a stop's title -> its Stop. Useful for faster repeated metadata
   /// lookups.
   Map<String, Stop> stopMeta;
-  /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
+  /// A map of a stop's title -> another map, keyed by a stop's field's name ->
   /// its StopField. Useful for faster metadata lookups.
   Map<String, Map<String, StopField>> stopFieldsMeta;
-  /// A map of a stop's ID -> another map, keyed by a stop's field's name ->
+  /// A map of a stop's title -> another map, keyed by a stop's field's name ->
   /// text controller for user's response.
   Map<String, Map<String, TextEditingController>> stopFields;
   /// The time when this route was started by the user.
@@ -52,29 +52,29 @@ class ActiveRouteState extends State<ActiveRoute> {
     if (widget.activeRoute == null) {
       widget.changeRoute(AppView.SELECT_ROUTE);
     }
-    Map<String, RecyclingRouteField> routeMetaToAdd = {};
+    Map<String, ModelField> routeMetaToAdd = {};
     Map<String, TextEditingController> routeFieldsToAdd = {};
     Map<String, Stop> stopMetaToAdd = {};
     Map<String, Map<String, StopField>> stopFieldsMetaToAdd = {};
     Map<String, Map<String, TextEditingController>> stopFieldsToAdd = {};
 
     /// Convert data from given widget into forms usable by build process.
-    widget.activeRoute.fields.forEach((RecyclingRouteField rr) {
-      routeMetaToAdd[rr.name] = rr;
-      routeFieldsToAdd[rr.name] = TextEditingController();
+    widget.activeRoute.fields.forEach((ModelField rr) {
+      routeMetaToAdd[rr.title] = rr;
+      routeFieldsToAdd[rr.title] = TextEditingController();
     });
     widget.activeRoute.stops.forEach((Stop s) {
-      stopMetaToAdd[s.id] = s;
+      stopMetaToAdd[s.title] = s;
       widget.activeRoute.stopFields.forEach((StopField sf) {
-        if (stopFieldsMetaToAdd[s.id] == null) {
-          stopFieldsMetaToAdd[s.id] = {};
+        if (stopFieldsMetaToAdd[s.title] == null) {
+          stopFieldsMetaToAdd[s.title] = {};
         }
-        stopFieldsMetaToAdd[s.id][sf.name] = sf;
+        stopFieldsMetaToAdd[s.title][sf.title] = sf;
 
-        if (stopFieldsToAdd[s.id] == null) {
-          stopFieldsToAdd[s.id] = {};
+        if (stopFieldsToAdd[s.title] == null) {
+          stopFieldsToAdd[s.title] = {};
         }
-        stopFieldsToAdd[s.id][sf.name] = TextEditingController();
+        stopFieldsToAdd[s.title][sf.title] = TextEditingController();
       });
     });
 
@@ -139,20 +139,21 @@ class ActiveRouteState extends State<ActiveRoute> {
     });
 
     /// Create a submission object from info entered by user.
-    RecyclingRouteSubmission thisSubmission = RecyclingRouteSubmission(
-      routeId: widget.activeRoute.id,
+    Record thisSubmission = Record(
+      modelId: widget.activeRoute.id,
+      modelTitle: widget.activeRoute.title,
       startTime: startTime,
       endTime: DateTime.now(),
-      routeFields: routeFields.map((String fieldName, TextEditingController fieldController) {
+      properties: routeFields.map((String fieldName, TextEditingController fieldController) {
         return MapEntry(fieldName, fieldController.text);
       }),
       stops: stopFields.entries.map((MapEntry me) {
-        String thisStopId = me.key;
+        String thisStopTitle = me.key;
         Map<String, TextEditingController> thisStopDetails = me.value;
 
-        return StopSubmission(
-          stopId: thisStopId,
-          stopFields: thisStopDetails.map((String stopFieldName, TextEditingController thisController) {
+        return RecordStop(
+          title: thisStopTitle,
+          properties: thisStopDetails.map((String stopFieldName, TextEditingController thisController) {
             return MapEntry(stopFieldName, thisController.text);
           }),
         );
@@ -243,7 +244,7 @@ class ActiveRouteState extends State<ActiveRoute> {
   Widget _buildRouteTitleCard() {
     List<Widget> theseFields = [];
     routeFields.forEach((String fieldName, TextEditingController thisController) {
-      bool isOptional = routeMeta[fieldName].isOptional;
+      bool isOptional = routeMeta[fieldName].optional;
       TextInputType thisKeyboardType = routeMeta[fieldName].type == 'number'
         ? TextInputType.number
         : TextInputType.text;
@@ -278,7 +279,7 @@ class ActiveRouteState extends State<ActiveRoute> {
         child: Column(
           children: <Widget>[
             Text(
-              widget.activeRoute.name,
+              widget.activeRoute.title,
               style: cardTextStyle,
             ),
             Text(
@@ -303,7 +304,7 @@ class ActiveRouteState extends State<ActiveRoute> {
         Map<String, TextEditingController> theseControllers = stopFields[thisStopId];
         List<Widget> rowElements = [];
         theseControllers.forEach((String fieldName, TextEditingController thisController) {
-          bool isOptional = stopFieldsMeta[thisStopId][fieldName].isOptional;
+          bool isOptional = stopFieldsMeta[thisStopId][fieldName].optional;
           TextInputType thisKeyboardType = stopFieldsMeta[thisStopId][fieldName].type == 'number'
             ? TextInputType.number
             : TextInputType.text;
@@ -335,15 +336,15 @@ class ActiveRouteState extends State<ActiveRoute> {
                     child: Column(
                       children: <Widget>[
                         Text(
-                          stopMeta[thisStopId].name,
+                          stopMeta[thisStopId].title,
                           style: cardTextStyle.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        stopMeta[thisStopId].address != null && stopMeta[thisStopId].address.trim().length > 0
+                        stopMeta[thisStopId].description != null && stopMeta[thisStopId].description.trim().length > 0
                           ? Text(
-                              'Address: ${stopMeta[thisStopId].address}',
+                              '${stopMeta[thisStopId].description}',
                               style: cardTextStyle.copyWith(
                                 fontSize: cardTextStyle.fontSize - 2.0
                               ),

@@ -1,10 +1,12 @@
 
+import 'package:flutter/material.dart';
+
 enum AppView { SELECT_ROUTE, ACTIVE_ROUTE }
 
-/// Stores information regarding a retrieval of all routes.
+/// Stores information regarding a retrieval of all routes from local storage.
 class RoutesRetrieval {
   /// Routes that were successfully retrieved.
-  final List<RecyclingRoute> routes;
+  final List<Model> routes;
 
   /// The cache status of the routes; a value of "true" indicates that [routes]
   /// were retrieved from cache, indicating no internet connection.
@@ -16,88 +18,96 @@ class RoutesRetrieval {
   });
 }
 
-class RecyclingRouteField {
-  final String name;
-  final String type;
-  final bool isOptional;
+class Group {
+  final String id;
+  final String members;
 
-  RecyclingRouteField({
-    this.name,
+  Group({
+    this.id,
+    this.members
+  });
+}
+
+class ModelField {
+  final String title;
+  final String type;
+  final bool optional;
+  String groupId;
+
+  ModelField({
+    this.title,
     this.type,
-    this.isOptional
+    this.optional,
+    this.groupId
   });
 }
 class StopField {
-  final String name;
+  final String title;
   final String type;
-  final bool isOptional;
+  final bool optional;
+  String groupId;
 
   StopField({
-    this.name,
-    this.type,
-    this.isOptional
-  });
-}
-
-class RecyclingRoute {
-
-  final String id;
-  final String name;
-  final List<RecyclingRouteField> fields;
-  final List<Stop> stops;
-  final List<StopField> stopFields;
-
-  RecyclingRoute({
-    this.id,
-    this.name,
-    this.fields,
-    this.stops,
-    this.stopFields,
+    @required this.title,
+    @required this.type,
+    @required this.optional,
+    this.groupId
   });
 }
 
 class Stop {
-  final String id;
-  final String name;
-  String address;
+  final String title;
+  final String description;
+  List<String> exclude;
 
   Stop({
-    this.id,
-    this.name,
-    this.address
+    @required this.title,
+    @required this.description,
+    @required this.exclude
   });
 }
 
-class RecyclingRouteSubmission {
-  String id;
-  final String routeId;
-  DateTime startTime;
-  DateTime endTime;
-  final Map<String, String> routeFields;
-  final List<StopSubmission> stops;
+class Model {
+  final String id;
+  final String title;
+  final List<ModelField> fields;
+  final List<Stop> stops;
+  final List<StopField> stopFields;
 
-  RecyclingRouteSubmission({
-    this.id,
-    this.routeId,
-    this.routeFields,
-    this.stops,
-    endTime,
-    startTime,
-  }) {
-    // don't allow for endTime unless a startTime is also specified
-    if (endTime != null && startTime == null) {
-      throw new RangeError('Record with a check-in time cannot be created without a check-out time.');
-    }
-    this.startTime = startTime;
-    this.endTime = endTime;
-  }
+  Model({
+    @required this.id,
+    @required this.title,
+    @required this.fields,
+    @required this.stops,
+    @required this.stopFields,
+  });
 }
-class StopSubmission {
-  String stopId;
-  final Map<String, String> stopFields;
 
-  StopSubmission({
-    this.stopId,
-    this.stopFields
+class Record {
+  final String modelId;
+  final String modelTitle;
+  final Map<String, String> properties;
+  final List<RecordStop> stops;
+  final DateTime startTime;
+  final DateTime endTime;
+  String id;
+
+  Record({
+    @required this.modelId,
+    @required this.modelTitle,
+    @required this.properties,
+    @required this.stops,
+    @required this.startTime,
+    @required this.endTime,
+    this.id,
+  });
+}
+class RecordStop {
+  final String title;
+  final Map<String, String> properties;
+
+  RecordStop({
+    @required this.title,
+    @required this.properties
   });
 }
