@@ -35,6 +35,17 @@ class _MainState extends State<Main> {
 
   AppView currentView = AppView.SELECT_ROUTE;
   Model activeRoute;
+  Record activeRouteSavedData;
+  String activeRouteSavedId;
+
+  void resetRoute() {
+    setState(() {
+      currentView = AppView.SELECT_ROUTE;
+      activeRoute = null;
+      activeRouteSavedData = null;
+      activeRouteSavedId = null;
+    });
+  }
 
   void changeRoute(AppView route) {
     setState(() {
@@ -42,9 +53,11 @@ class _MainState extends State<Main> {
     });
   }
 
-  void setActiveRoute(Model route) {
+  void setActiveRoute(Model route, Record savedData, String savedDataId) {
     setState(() {
       activeRoute = route;
+      activeRouteSavedData = savedData;
+      activeRouteSavedId = savedDataId;
     });
   }
 
@@ -59,8 +72,10 @@ class _MainState extends State<Main> {
       );
     } else { // currentView == AppView.SELECT_ROUTE
       toDisplay = ActiveRoute(
-        changeRoute: changeRoute,
+        resetRoute: resetRoute,
         activeRoute: activeRoute,
+        activeRouteSavedData: activeRouteSavedData,
+        activeRouteSavedId: activeRouteSavedId,
       );
     }
 

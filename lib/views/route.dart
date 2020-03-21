@@ -5,12 +5,16 @@ import 'package:route_recorder/views/loading.dart';
 
 class ActiveRoute extends StatefulWidget {
   final Model activeRoute;
-  final Function changeRoute;
+  final Record activeRouteSavedData;
+  final String activeRouteSavedId;
+  final Function resetRoute;
 
   ActiveRoute({
     Key key,
     this.activeRoute,
-    this.changeRoute,
+    this.activeRouteSavedData,
+    this.activeRouteSavedId,
+    this.resetRoute
   }) : super(key: key);
 
   @override
@@ -50,7 +54,7 @@ class ActiveRouteState extends State<ActiveRoute> {
   @override
   void initState() {
     if (widget.activeRoute == null) {
-      widget.changeRoute(AppView.SELECT_ROUTE);
+      widget.resetRoute();
     }
     Map<String, ModelField> routeMetaToAdd = {};
     Map<String, TextEditingController> routeFieldsToAdd = {};
@@ -78,6 +82,35 @@ class ActiveRouteState extends State<ActiveRoute> {
       });
     });
 
+    /// Prepopulate fields with previously entered data if provided.
+    if (widget.activeRouteSavedData != null) {
+      /// Prepopulate what will be the route's general fields' - the fields
+      /// about which appear at the top of the screen.
+      routeFieldsToAdd.forEach((String fieldTitle, TextEditingController controller) {
+        String savedData = widget.activeRouteSavedData.properties[fieldTitle];
+        if (savedData != null) {
+          controller.text = savedData;
+        }
+      });
+
+      /// Prepopulate what will be stops' fields - the fields within the rows
+      /// of the main body of the screen.
+      stopFieldsToAdd.forEach((String stopTitle, Map<String, TextEditingController> routeFields) {
+        stopFieldsToAdd[stopTitle].forEach((String stopFieldTitle, TextEditingController controller) {
+          /// TODO: make this lookup more efficient
+          String savedData = widget.activeRouteSavedData.stops.firstWhere((RecordStop stop) => stop.title == stopTitle).properties[stopFieldTitle];
+          if (savedData != null) {
+            controller.text = savedData;
+          }
+        });
+      });
+    }
+
+    /// Set start time as the current time, unless this is a resumed route.
+    DateTime startTimeToAdd = widget.activeRouteSavedData != null
+      ? widget.activeRouteSavedData.startTime
+      : DateTime.now();
+
     setState(() {
       routeMeta = routeMetaToAdd;
       routeFields = routeFieldsToAdd;
@@ -85,7 +118,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       stopFields = stopFieldsToAdd;
       stopFieldsMeta = stopFieldsMetaToAdd;
       isLoading = false;
-      startTime = DateTime.now();
+      startTime = startTimeToAdd;
     });
     super.initState();
   }
@@ -105,31 +138,81 @@ class ActiveRouteState extends State<ActiveRoute> {
     super.dispose();
   }
 
-  void _handleCancelRoute(BuildContext context) {
-    showDialog<ConfirmAction>(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Are you sure you want to cancel? All entered data will be lost.'),
-          actions: <Widget>[
-            FlatButton(
-              onPressed: () {
-                Navigator.of(context).pop(ConfirmAction.CANCEL);
-              },
-              child: const Text('NO'),
-            ),
-            FlatButton(
-              onPressed: () {
-                widget.changeRoute(AppView.SELECT_ROUTE);
-                Navigator.of(context).pop(ConfirmAction.CONFIRM);
-              },
-              child: const Text('YES'),
-            ),
-          ],
-        );
+  void saveRouteForLater() async {
+    setState(() {
+      loadingAfterButtonPress = true;
+      isLoading = true;
+    });
+
+    /// Create a submission object from info entered by user. Doesn't create
+    /// properties for empty values; these are allowed to be null.
+    Map<String, String> propertiesToSave = {};
+    routeFields.forEach((String fieldName, TextEditingController fieldController) {
+      if (fieldController.text.length > 0) {
+        propertiesToSave[fieldName] = fieldController.text;
       }
+    });
+    Record thisSubmission = Record(
+      modelId: widget.activeRoute.id,
+      modelTitle: widget.activeRoute.title,
+      startTime: startTime,
+      endTime: null,
+      properties: propertiesToSave,
+      stops: stopFields.entries.map((MapEntry me) {
+        String thisStopTitle = me.key;
+        Map<String, TextEditingController> thisStopDetails = me.value;
+
+        Map<String, String> stopPropertiesToSave = {};
+        thisStopDetails.forEach((String key, TextEditingController controller) {
+          if (controller.text.length > 0) {
+            stopPropertiesToSave[key] = controller.text;
+          }
+        });
+        return RecordStop(
+          title: thisStopTitle,
+          properties: stopPropertiesToSave,
+        );
+      }).toList()
     );
+
+    try {
+      await saveRecord(UnfinishedRoute(
+        record: thisSubmission,
+        model: widget.activeRoute,
+        id: widget.activeRouteSavedId
+      ));
+    } catch (e, st) {
+      setState(() {
+        loadingAfterButtonPress = false;
+        isLoading = false;
+        print('error: $e');
+        print('Stacktrace: $st');
+        showDialog<ConfirmAction>(
+          context: context,
+          barrierDismissible: true,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Something went wrong. Wait a bit, then try to submit it again. \nIf this issue persists, keep this screen open or write it down, and report the problem to your supervisors.'),
+              actions: <Widget>[
+                FlatButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(ConfirmAction.CANCEL);
+                  },
+                  child: const Text('OKAY'),
+                ),
+              ],
+            );
+          }
+        );
+      });
+      return;
+    }
+    Scaffold.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Route saved. Thanks!')
+      )
+    );
+    widget.resetRoute();
   }
 
   void submitRoute() async {
@@ -165,12 +248,16 @@ class ActiveRouteState extends State<ActiveRoute> {
     bool directlySuccessful;
     try {
       directlySuccessful = await submitRecord(thisSubmission);
-    } catch (e) {
+      if (widget.activeRouteSavedId != null) {
+        await deleteUnfinishedRecord(widget.activeRouteSavedId);
+      }
+    } catch (e, st) {
       setState(() {
         loadingAfterButtonPress = false;
         isLoading = false;
       });
       print('error: $e');
+      print('Stacktrace: $st');
       showDialog<ConfirmAction>(
         context: context,
         barrierDismissible: true,
@@ -203,7 +290,61 @@ class ActiveRouteState extends State<ActiveRoute> {
         )
       );
     }
-    widget.changeRoute(AppView.SELECT_ROUTE);
+    widget.resetRoute();
+  }
+
+  void _handleCancelRoute(BuildContext context) {
+    showDialog<ConfirmAction>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Are you sure you want to cancel? All newly-entered data will be lost.'),
+          actions: <Widget>[
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CANCEL);
+              },
+              child: const Text('NO'),
+            ),
+            FlatButton(
+              onPressed: () {
+                widget.resetRoute();
+                Navigator.of(context).pop(ConfirmAction.CONFIRM);
+              },
+              child: const Text('YES'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
+  void _handleSaveRouteForLater(BuildContext context) {
+    showDialog<ConfirmAction>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Are you sure you want to save this for later?'),
+          actions: <Widget>[
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CANCEL);
+              },
+              child: const Text('CANCEL'),
+            ),
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CONFIRM);
+                saveRouteForLater();
+              },
+              child: const Text('CONFIRM'),
+            ),
+          ],
+        );
+      }
+    );
   }
 
   void _handleFinishRoute(BuildContext context) async {
@@ -384,6 +525,18 @@ class ActiveRouteState extends State<ActiveRoute> {
                 onPressed: loadingAfterButtonPress
                   ? null
                   : () => _handleCancelRoute(context)
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.only(right: 10),
+              child: RaisedButton(
+                child: Text(
+                  'Save',
+                  style: cardTextStyle,
+                ),
+                onPressed: loadingAfterButtonPress
+                  ? null
+                  : () => _handleSaveRouteForLater(context)
               ),
             ),
             RaisedButton(
