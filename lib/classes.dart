@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:route_recorder/utils.dart';
 
 enum AppView { SELECT_ROUTE, ACTIVE_ROUTE }
+enum FieldDataType { string, number, select }
 
-/// Stores information regarding a retrieval of all routes from local storage.
+/// Stores information regarding a retrieval of routes.
 class RoutesRetrieval {
   /// Routes that were successfully retrieved.
   final List<Model> routes;
@@ -20,19 +21,50 @@ class RoutesRetrieval {
   });
 }
 
+/// Stores information regarding a retrieval of groups.
+class GroupsRetrieval {
+  /// Groups that were successfully retrieved.
+  final List<Group> groups;
+
+  /// The cache status of the groups; a value of "true" indicates that [groups]
+  /// were retrieved from cache, indicating no internet connection.
+  final bool fromCache;
+
+  GroupsRetrieval({
+    this.groups,
+    this.fromCache
+  });
+}
+
 class Group {
-  final String id;
-  final String members;
+  final List<String> members;
+  String id;
 
   Group({
     this.id,
     this.members
   });
+
+  Group.fromMap(Map map)
+    : members = map['members']
+        .map((dynamic) => dynamic['title']).toList().cast<String>(),
+      id = map['id'];
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'members': members.map((String s) => {
+        'title': s
+      })
+    };
+  }
 }
+
+
 
 class ModelField {
   final String title;
-  final String type;
+  final FieldDataType type;
   final bool optional;
   String groupId;
 
@@ -46,7 +78,9 @@ class ModelField {
   static ModelField mapDeserialize(dynamic map) {
     return ModelField(
       title: map['title'],
-      type: map['type'] ?? 'string',
+      type: map['type'] == null
+        ? FieldDataType.string
+        : stringToFieldDataType(map['type']),
       optional: map['optional'] ?? false,
       /// Handle groupId being both a DocumentReference when retrieved
       /// from Firestore, and a String when retrieved from local storage
@@ -59,7 +93,7 @@ class ModelField {
   Map<String, dynamic> mapSerialize() {
     return {
       'title': title,
-      'type': type,
+      'type': fieldDataTypeToString(type),
       'optional': optional,
       'groupId': groupId
     };
@@ -68,7 +102,7 @@ class ModelField {
 
 class StopField {
   final String title;
-  final String type;
+  final FieldDataType type;
   final bool optional;
   String groupId;
 
@@ -82,7 +116,9 @@ class StopField {
   static StopField mapDeserialize(Map<String, dynamic> map) {
     return StopField(
       title: map['title'],
-      type: map['type'] ?? 'string',
+      type: map['type'] == null
+        ? FieldDataType.string
+        : stringToFieldDataType(map['type']),
       optional: map['optional'] ?? false,
       groupId: map['groupId'] is DocumentReference
         ? map['groupId'].documentID
@@ -93,7 +129,7 @@ class StopField {
   Map<String, dynamic> mapSerialize() {
     return {
       'title': title,
-      'type': type,
+      'type': fieldDataTypeToString(type),
       'optional': optional,
       'groupId': groupId
     };

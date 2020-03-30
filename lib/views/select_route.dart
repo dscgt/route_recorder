@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:route_recorder/api.dart';
 import 'package:route_recorder/classes.dart';
-import 'package:route_recorder/main.dart';
 import 'package:route_recorder/views/loading.dart';
 
 enum ConfirmAction { CANCEL, CONFIRM }
@@ -57,7 +56,11 @@ class _SelectRouteState extends State<SelectRoute> {
 
   void getModels() {
     getAllRoutes().then((RoutesRetrieval mostRecentRoutes) {
-      /// Convert retrieved routes into formats usable by build process.
+      /// Get all groups to prep the Firebase cache. This won't be used
+      /// explicitly in select_route, but groups will be used in route.dart.
+      if (!mostRecentRoutes.fromCache) {
+        getAllGroups();
+      }
       setState(() {
         recyclingRoutes = mostRecentRoutes.routes;
         selectedRoute = mostRecentRoutes.routes.length > 0

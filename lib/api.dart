@@ -11,7 +11,7 @@ import 'package:route_recorder/classes.dart' as Classes;
 Firestore db = Firestore.instance;
 final String recordModelsCollectionName = 'models';
 final String recordsCollectionName = 'records';
-final String groupsCollectionName = 'records';
+final String groupsCollectionName = 'groups';
 final String localDbUnfinishedRecordsName = 'unfinished_records';
 
 /// Gets the path on local filesystem that will be used to reference local
@@ -22,10 +22,7 @@ Future<String> getLocalDbPath() async {
 }
 
 /// Get route models from Firebase, and convert to a format that the app can
-/// use. The map that is returned has two properties; "routes", which stores
-/// a List<Model>, and "fromCache", which is boolean and will be true
-/// if the routes were retrieved from local storage, indicating no internet
-/// connection.
+/// use.
 Future<Classes.RoutesRetrieval> getAllRoutes() {
   return db.collection(recordModelsCollectionName).getDocuments().then((QuerySnapshot snap) {
     return Classes.RoutesRetrieval(
@@ -38,6 +35,56 @@ Future<Classes.RoutesRetrieval> getAllRoutes() {
       fromCache: snap.metadata.isFromCache
     );
   });
+}
+
+/// Get groups from Firebase, and convert to a format that the app can
+/// use.
+Future<Classes.GroupsRetrieval> getAllGroups() {
+  return db.collection(groupsCollectionName).getDocuments().then((QuerySnapshot snap) {
+    return Classes.GroupsRetrieval(
+      groups: snap.documents.map((DocumentSnapshot ds) {
+        Classes.Group toReturn = Classes.Group.fromMap(ds.data);
+        /// also include model ID
+        toReturn.id = ds.documentID;
+        return toReturn;
+      }).toList(),
+      fromCache: snap.metadata.isFromCache
+    );
+  });
+}
+
+/// Get groups specified by [ids] from Firebase, and convert to a format that
+/// the app can use. Will throw an error if any of the IDs given refers to a
+/// document that does not exist.
+Future<Classes.GroupsRetrieval> getGroups(List<String> ids) async {
+  if (ids.length == 0) {
+    return Classes.GroupsRetrieval(
+      groups: [],
+      fromCache: true
+    );
+  }
+
+  List<Future<DocumentSnapshot>> promises = ids
+    .map((String id) =>
+      db.collection(groupsCollectionName)
+      .document(id)
+      .get())
+    .toList();
+  List<DocumentSnapshot> result = await Future.wait(promises);
+  Iterable<DocumentSnapshot> nonExistants = result.where((DocumentSnapshot ds) => !ds.exists);
+  if (nonExistants.length > 0) {
+    throw new Exception('Attempted to get groups that do not exist: ${nonExistants.map((DocumentSnapshot ds) => ds.documentID).join(', ')}');
+  }
+
+  return Classes.GroupsRetrieval(
+    groups: result.map((DocumentSnapshot ds) {
+      Classes.Group toReturn = Classes.Group.fromMap(ds.data);
+      /// also include model ID
+      toReturn.id = ds.documentID;
+      return toReturn;
+    }).toList(),
+    fromCache: result[0].metadata.isFromCache
+  );
 }
 
 /// Retrieve unfinished routes from local storage.
