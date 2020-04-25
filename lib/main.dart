@@ -82,7 +82,7 @@ class _MainState extends State<Main> {
     return Scaffold(
       appBar: currentView == AppView.SELECT_ROUTE
         ? AppBar(
-            title: Text('OSWM&R Checkout App'),
+            title: Text('OSWM&R Recorder App'),
           )
         : null,
       body: toDisplay
