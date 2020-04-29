@@ -1,6 +1,10 @@
 # route_recorder
 
-Buddy app for OSWM&R crewmembers working recycling routes.
+Buddy app for recycling department crewmembers working recycling routes.
+
+This is part of a suite of apps made for Georgia Tech's [OSWM&R](http://www.recycle.gatech.edu/), which also includes:
+* [recycling-checkin](https://github.com/dscgt/recycling_checkin): Daily check-out/check-in for recycling department crewmembers needing GT property
+* [recycling-website](https://github.com/dscgt/recycling_website): Management and data viewing portal for recycling department administrators
 
 ## Running this code
 
