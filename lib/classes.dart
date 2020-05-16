@@ -179,41 +179,55 @@ class Stop {
   }
 }
 
+class StopData {
+  final List<StopField> fields;
+  final List<Stop> stops;
+
+  StopData({
+    @required this.fields,
+    @required this.stops
+  });
+
+  static StopData fromMap(Map<String, dynamic> map) {
+    return StopData(
+      stops: map['stops'].map((dynamic stop) =>
+        Stop.fromMap(stop)
+      ).toList().cast<Stop>(),
+      fields: map['fields'].map((dynamic field) =>
+        StopField.fromMap(field)
+      ).toList().cast<StopField>(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'stops': stops.map((Stop stop) => stop.toMap()).toList(),
+      'fields': fields.map((StopField sf) => sf.toMap()).toList(),
+    };
+  }
+}
+
 class Model {
   final String title;
   final List<ModelField> fields;
-  final List<Stop> stops;
-  final List<StopField> stopFields;
+  final StopData stopData;
   String id;
 
   Model({
     @required this.title,
     @required this.fields,
-    @required this.stops,
-    @required this.stopFields,
+    @required this.stopData,
     @required this.id,
   });
 
-  static Model fromMap(Map<String, dynamic> map, bool fromFirebase) {
-    Map<String, dynamic> thisMap = Map.from(map);
-    if (fromFirebase) {
-      /// bubble up fields within stopData
-      thisMap['stops'] = thisMap['stopData']['stops'];
-      thisMap['stopFields'] = thisMap['stopData']['fields'];
-    }
-
+  static Model fromMap(Map<String, dynamic> map) {
     return Model(
-      id: thisMap['id'],
-      title: thisMap['title'],
-      fields: thisMap['fields'].map((dynamic field) =>
+      id: map['id'],
+      title: map['title'],
+      fields: map['fields'].map((dynamic field) =>
         ModelField.fromMap(field)
       ).toList().cast<ModelField>(),
-      stops: thisMap['stops'].map((dynamic stop) =>
-        Stop.fromMap(stop)
-      ).toList().cast<Stop>(),
-      stopFields: thisMap['stopFields'].map((dynamic field) =>
-        StopField.fromMap(field)
-      ).toList().cast<StopField>(),
+      stopData: StopData.fromMap(map['stopData']),
     );
   }
 
@@ -222,8 +236,7 @@ class Model {
       'id': id,
       'title': title,
       'fields': fields.map((ModelField mf) => mf.toMap()).toList(),
-      'stops': stops.map((Stop stop) => stop.toMap()).toList(),
-      'stopFields': stopFields.map((StopField sf) => sf.toMap()).toList(),
+      'stopData': stopData.toMap()
     };
   }
 }
@@ -319,7 +332,7 @@ class UnfinishedRoute {
 
   static fromMap(Map<String, dynamic> map) {
     return UnfinishedRoute(
-      model: Model.fromMap(map['model'], false),
+      model: Model.fromMap(map['model']),
       record: Record.fromMap(map['record']),
       id: map['id'],
     );

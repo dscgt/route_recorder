@@ -94,7 +94,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     widget.activeRoute.fields.forEach((ModelField mf) {
       if (mf.type == FieldDataType.select) groupIds.add(mf.groupId);
     });
-    widget.activeRoute.stopFields.forEach((StopField sf) {
+    widget.activeRoute.stopData.fields.forEach((StopField sf) {
       if (sf.type == FieldDataType.select) groupIds.add(sf.groupId);
     });
     List<Group> groups;
@@ -146,13 +146,13 @@ class ActiveRouteState extends State<ActiveRoute> {
         routeFieldsToAdd[rr.title] = TextEditingController();
       }
     });
-    widget.activeRoute.stops.forEach((Stop s) {
+    widget.activeRoute.stopData.stops.forEach((Stop s) {
       stopMetaToAdd[s.title] = s;
       stopFieldsMetaToAdd[s.title] = {};
       stopFieldsToAdd[s.title] = {};
       stopFieldsForDropdownToAdd[s.title] = {};
 
-      widget.activeRoute.stopFields.forEach((StopField sf) {
+      widget.activeRoute.stopData.fields.forEach((StopField sf) {
         stopFieldsMetaToAdd[s.title][sf.title] = sf;
         if (sf.type != FieldDataType.select) {
           stopFieldsToAdd[s.title][sf.title] = TextEditingController();
@@ -184,7 +184,7 @@ class ActiveRouteState extends State<ActiveRoute> {
             .firstWhere((RecordStop stop) => stop.title == stopTitle)
             .properties[fieldTitle];
           if (savedData != null) {
-            if (sf.type == 'select') {
+            if (sf.type == FieldDataType.select) {
               stopFieldsForDropdownToAdd[stopTitle][fieldTitle] = savedData;
             } else {
               stopFieldsToAdd[stopTitle][fieldTitle].text = savedData;

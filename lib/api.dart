@@ -28,7 +28,7 @@ Future<Classes.RoutesRetrieval> getAllRoutes() {
   return db.collection(recordModelsCollectionName).getDocuments().then((QuerySnapshot snap) {
     return Classes.RoutesRetrieval(
       routes: snap.documents.map((DocumentSnapshot ds) {
-        Classes.Model toReturn = Classes.Model.fromMap(ds.data, true);
+        Classes.Model toReturn = Classes.Model.fromMap(ds.data);
         /// also include model ID
         toReturn.id = ds.documentID;
         return toReturn;
@@ -124,7 +124,7 @@ Future<dynamic> saveRecord(Classes.UnfinishedRoute unfinishedRoute) async {
   toAdd['model']['fields'].forEach((Map modelFields) {
     modelFields['type'] = fieldDataTypeToString(modelFields['type']);
   });
-  toAdd['model']['stopFields'].forEach((Map modelFields) {
+  toAdd['model']['stopData']['fields'].forEach((Map modelFields) {
     modelFields['type'] = fieldDataTypeToString(modelFields['type']);
   });
 
