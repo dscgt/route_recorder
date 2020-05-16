@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:route_recorder/utils.dart';
 import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_io.dart';
 import 'package:route_recorder/classes.dart' as Classes;
@@ -27,7 +28,7 @@ Future<Classes.RoutesRetrieval> getAllRoutes() {
   return db.collection(recordModelsCollectionName).getDocuments().then((QuerySnapshot snap) {
     return Classes.RoutesRetrieval(
       routes: snap.documents.map((DocumentSnapshot ds) {
-        Classes.Model toReturn = Classes.Model.mapDeserialize(ds.data, true);
+        Classes.Model toReturn = Classes.Model.fromMap(ds.data, true);
         /// also include model ID
         toReturn.id = ds.documentID;
         return toReturn;
@@ -95,7 +96,7 @@ Future<List<Classes.UnfinishedRoute>> getUnfinishedRoutes() async {
   StoreRef store = stringMapStoreFactory.store(localDbUnfinishedRecordsName);
   return store.find(localDb).then((List<RecordSnapshot> snapshots) {
     return snapshots.map((RecordSnapshot snap) {
-      Classes.UnfinishedRoute toReturn = Classes.UnfinishedRoute.mapDeserialize(snap.value);
+      Classes.UnfinishedRoute toReturn = Classes.UnfinishedRoute.fromMap(snap.value);
       toReturn.id = snap.key;
       return toReturn;
     }).toList().cast<Classes.UnfinishedRoute>();
@@ -110,15 +111,23 @@ Future<dynamic> saveRecord(Classes.UnfinishedRoute unfinishedRoute) async {
   Database localDb = await dbFactory.openDatabase(dbPath);
   StoreRef store = stringMapStoreFactory.store(localDbUnfinishedRecordsName);
 
-  /// If [unfinishedRoute] has an ID, this means it exists in local storage;
-  /// must delete the old version.
+  // If [unfinishedRoute] has an ID, this means it exists in local storage;
+  // must delete the old version.
   if (unfinishedRoute.id != null) {
     await deleteUnfinishedRecord(unfinishedRoute.id);
   }
 
-  Map<String, dynamic> toAdd = unfinishedRoute.mapSerialize();
-  /// Convert DateTime's to UNIX timestamps if so.
+  Map<String, dynamic> toAdd = unfinishedRoute.toMap();
+  // Convert DateTime's to UNIX timestamps
   toAdd['record']['startTime'] = (toAdd['record']['startTime'].millisecondsSinceEpoch / 1000).round();
+  // Convert enums to strings
+  toAdd['model']['fields'].forEach((Map modelFields) {
+    modelFields['type'] = fieldDataTypeToString(modelFields['type']);
+  });
+  toAdd['model']['stopFields'].forEach((Map modelFields) {
+    modelFields['type'] = fieldDataTypeToString(modelFields['type']);
+  });
+
   return store.add(localDb, toAdd);
 }
 
@@ -136,10 +145,10 @@ Future<dynamic> deleteUnfinishedRecord(String unfinishedRouteId) async {
 /// true if the record submitted successfully, and false if the record is being
 /// cached due to unsuccessful internet connectivity.
 Future<bool> submitRecord(Classes.Record record) {
-  /// Convert [record] into a form usable by Firebase
-  Map toAdd = record.mapSerialize();
-  /// make transformations for Firebase:
-  ///   - remove the ID
+  // Convert [record] into a form usable by Firebase
+  Map toAdd = record.toMap();
+  // make transformations for Firebase:
+  //   - remove the ID
   toAdd.remove('id');
 
   return Future.any([

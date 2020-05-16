@@ -60,8 +60,6 @@ class Group {
   }
 }
 
-
-
 class ModelField {
   final String title;
   final FieldDataType type;
@@ -75,25 +73,34 @@ class ModelField {
     this.groupId
   });
 
-  static ModelField mapDeserialize(dynamic map) {
+  /// Converts a map to a ModelField. In the case of null values, optional will
+  /// default to false and groupId maintains null, while title cannot
+  /// be null and will likely error. type accepts strings or FieldDataType
+  /// and defaults to FieldDataType.String. groupId accepts DocumentReference or
+  /// strings.
+  static ModelField fromMap(dynamic map) {
+    FieldDataType thisType;
+    if (map['type'] == null) {
+      thisType = FieldDataType.string;
+    } else if (map['type'] is FieldDataType) {
+      thisType = map['type'];
+    } else {
+      thisType = stringToFieldDataType(map['type']);
+    }
     return ModelField(
       title: map['title'],
-      type: map['type'] == null
-        ? FieldDataType.string
-        : stringToFieldDataType(map['type']),
+      type: thisType,
       optional: map['optional'] ?? false,
-      /// Handle groupId being both a DocumentReference when retrieved
-      /// from Firestore, and a String when retrieved from local storage
       groupId: map['groupId'] is DocumentReference
         ? map['groupId'].documentID
         : map['groupId']
     );
   }
 
-  Map<String, dynamic> mapSerialize() {
+  Map<String, dynamic> toMap() {
     return {
       'title': title,
-      'type': fieldDataTypeToString(type),
+      'type': type,
       'optional': optional,
       'groupId': groupId
     };
@@ -113,12 +120,18 @@ class StopField {
     this.groupId
   });
 
-  static StopField mapDeserialize(Map<String, dynamic> map) {
+  static StopField fromMap(Map<String, dynamic> map) {
+    FieldDataType thisType;
+    if (map['type'] == null) {
+      thisType = FieldDataType.string;
+    } else if (map['type'] is FieldDataType) {
+      thisType = map['type'];
+    } else {
+      thisType = stringToFieldDataType(map['type']);
+    }
     return StopField(
       title: map['title'],
-      type: map['type'] == null
-        ? FieldDataType.string
-        : stringToFieldDataType(map['type']),
+      type: thisType,
       optional: map['optional'] ?? false,
       groupId: map['groupId'] is DocumentReference
         ? map['groupId'].documentID
@@ -126,10 +139,10 @@ class StopField {
     );
   }
 
-  Map<String, dynamic> mapSerialize() {
+  Map<String, dynamic> toMap() {
     return {
       'title': title,
-      'type': fieldDataTypeToString(type),
+      'type': type,
       'optional': optional,
       'groupId': groupId
     };
@@ -147,7 +160,7 @@ class Stop {
     @required this.exclude
   });
 
-  static Stop mapDeserialize(Map<String, dynamic> map) {
+  static Stop fromMap(Map<String, dynamic> map) {
     return Stop(
       title: map['title'],
       description: map['description'],
@@ -157,7 +170,7 @@ class Stop {
     );
   }
 
-  Map<String, dynamic> mapSerialize() {
+  Map<String, dynamic> toMap() {
     return {
       'title': title,
       'description': description,
@@ -181,7 +194,7 @@ class Model {
     @required this.id,
   });
 
-  static Model mapDeserialize(Map<String, dynamic> map, bool fromFirebase) {
+  static Model fromMap(Map<String, dynamic> map, bool fromFirebase) {
     Map<String, dynamic> thisMap = Map.from(map);
     if (fromFirebase) {
       /// bubble up fields within stopData
@@ -193,24 +206,24 @@ class Model {
       id: thisMap['id'],
       title: thisMap['title'],
       fields: thisMap['fields'].map((dynamic field) =>
-        ModelField.mapDeserialize(field)
+        ModelField.fromMap(field)
       ).toList().cast<ModelField>(),
       stops: thisMap['stops'].map((dynamic stop) =>
-        Stop.mapDeserialize(stop)
+        Stop.fromMap(stop)
       ).toList().cast<Stop>(),
       stopFields: thisMap['stopFields'].map((dynamic field) =>
-        StopField.mapDeserialize(field)
+        StopField.fromMap(field)
       ).toList().cast<StopField>(),
     );
   }
 
-  Map<String, dynamic> mapSerialize() {
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'title': title,
-      'fields': fields.map((ModelField mf) => mf.mapSerialize()).toList(),
-      'stops': stops.map((Stop stop) => stop.mapSerialize()).toList(),
-      'stopFields': stopFields.map((StopField sf) => sf.mapSerialize()).toList(),
+      'fields': fields.map((ModelField mf) => mf.toMap()).toList(),
+      'stops': stops.map((Stop stop) => stop.toMap()).toList(),
+      'stopFields': stopFields.map((StopField sf) => sf.toMap()).toList(),
     };
   }
 }
@@ -224,14 +237,14 @@ class RecordStop {
     @required this.properties
   });
 
-  static RecordStop mapDeserialize(Map<String, dynamic> map) {
+  static RecordStop fromMap(Map<String, dynamic> map) {
     return RecordStop(
       title: map['title'],
       properties: map['properties'].cast<String, String>(),
     );
   }
 
-  Map<String, dynamic> mapSerialize() {
+  Map<String, dynamic> toMap() {
     return {
       'title': title,
       'properties': properties
@@ -258,7 +271,7 @@ class Record {
     this.id,
   });
 
-  static Record mapDeserialize(Map<String, dynamic> map) {
+  static Record fromMap(Map<String, dynamic> map) {
     return Record(
       modelId: map['modelId'],
       modelTitle: map['modelTitle'],
@@ -273,12 +286,12 @@ class Record {
           : null,
       id: map['id'],
       stops: map['stops'].map((dynamic stop) =>
-        RecordStop.mapDeserialize(stop)
+        RecordStop.fromMap(stop)
       ).toList().cast<RecordStop>()
     );
   }
 
-  Map<String, dynamic> mapSerialize() {
+  Map<String, dynamic> toMap() {
     return {
       'modelId': modelId,
       'modelTitle': modelTitle,
@@ -287,7 +300,7 @@ class Record {
       'endTime': endTime,
       'id': id,
       'stops': stops.map((RecordStop stop) =>
-        stop.mapSerialize()
+        stop.toMap()
       ).toList()
     };
   }
@@ -304,18 +317,18 @@ class UnfinishedRoute {
     this.id
   });
 
-  static mapDeserialize(Map<String, dynamic> map) {
+  static fromMap(Map<String, dynamic> map) {
     return UnfinishedRoute(
-      model: Model.mapDeserialize(map['model'], false),
-      record: Record.mapDeserialize(map['record']),
+      model: Model.fromMap(map['model'], false),
+      record: Record.fromMap(map['record']),
       id: map['id'],
     );
   }
 
-  Map<String, dynamic> mapSerialize() {
+  Map<String, dynamic> toMap() {
     return {
-      'model': model.mapSerialize(),
-      'record': record.mapSerialize(),
+      'model': model.toMap(),
+      'record': record.toMap(),
       'id': id
     };
   }
