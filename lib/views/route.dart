@@ -324,18 +324,27 @@ class ActiveRouteState extends State<ActiveRoute> {
     });
     List<RecordStop> stopsToAdd = [];
     stopFields.forEach((String stopTitle, Map<String, TextEditingController> stopDetails) {
-      if (stopMeta[stopTitle].exclude != null && stopMeta[stopTitle])
+      // change texteditingcontrollers into consumable maps, then filter maps
+      // for excluded fields before adding to submission object
+      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
+      Map<String, String> propertiesToAdd = stopDetails.map((String fieldName, TextEditingController controller) =>
+        MapEntry(fieldName, controller.text)
+      );
+      propertiesToAdd.removeWhere((String fieldName, String fieldVal) => exclude.contains(fieldName));
       stopsToAdd.add(RecordStop(
         title: stopTitle,
-        properties:  stopDetails.map((String fieldName, TextEditingController controller) =>
-          MapEntry(fieldName, controller.text)
-        )
+        properties: propertiesToAdd
       ));
     });
     stopFieldsForDropdown.forEach((String stopTitle, Map<String, String> stopDetails) {
+      // filter dropdown maps for excluded fields before adding to submission object
+      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
+
+      Map<String, String> propertiesToAdd = Map.from(stopDetails);
+      propertiesToAdd.removeWhere((String fieldName, String fieldValue) => exclude.contains(fieldName));
       stopsToAdd.add(RecordStop(
         title: stopTitle,
-        properties:  stopDetails
+        properties:  propertiesToAdd
       ));
     });
 
@@ -345,17 +354,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       startTime: startTime,
       endTime: DateTime.now(),
       properties: propertiesToAdd,
-      stops: stopFields.entries.map((MapEntry me) {
-        String thisStopTitle = me.key;
-        Map<String, TextEditingController> thisStopDetails = me.value;
-
-        return RecordStop(
-          title: thisStopTitle,
-          properties: thisStopDetails.map((String stopFieldName, TextEditingController thisController) {
-            return MapEntry(stopFieldName, thisController.text);
-          }),
-        );
-      }).toList()
+      stops: stopsToAdd
     );
 
     /// Submit this route record, and direct user back to route selection if
@@ -505,7 +504,7 @@ class ActiveRouteState extends State<ActiveRoute> {
           DropdownButtonFormField<String>(
             validator: (String value) {
               if (value == null && !mf.optional) {
-                return 'Please enter a fieldName.';
+                return 'Please enter a $fieldName.';
               }
               return null;
             },
@@ -588,7 +587,7 @@ class ActiveRouteState extends State<ActiveRoute> {
               DropdownButtonFormField<String>(
                 validator: (String value) {
                   if (value == null && !sf.optional) {
-                    return 'Please enter a fieldName.';
+                    return 'Please enter a $stopFieldTitle.';
                   }
                   return null;
                 },
@@ -695,7 +694,7 @@ class ActiveRouteState extends State<ActiveRoute> {
               padding: const EdgeInsets.only(right: 10),
               child: RaisedButton(
                 child: Text(
-                  'Save',
+                  'Save Route for Later',
                   style: cardTextStyle,
                 ),
                 onPressed: loadingAfterButtonPress
