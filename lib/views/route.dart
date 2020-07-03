@@ -324,6 +324,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     });
     List<RecordStop> stopsToAdd = [];
     stopFields.forEach((String stopTitle, Map<String, TextEditingController> stopDetails) {
+      if (stopMeta[stopTitle].exclude != null && stopMeta[stopTitle])
       stopsToAdd.add(RecordStop(
         title: stopTitle,
         properties:  stopDetails.map((String fieldName, TextEditingController controller) =>
@@ -578,6 +579,10 @@ class ActiveRouteState extends State<ActiveRoute> {
       children: ids.map((String stopTitle) {
         List<Widget> rowElements = [];
         stopFieldsMeta[stopTitle].forEach((String stopFieldTitle, StopField sf) {
+          // don't include fields excluded by this stop
+          if (stopMeta[stopTitle].exclude != null && stopMeta[stopTitle].exclude.contains(stopFieldTitle)) {
+            return;
+          }
           if (sf.type == FieldDataType.select) {
             rowElements.add(
               DropdownButtonFormField<String>(
