@@ -1,5 +1,5 @@
 
-This directory contains example JSON structures for records (record.json), models (model.json), and groups (group.json), which represent single documents under the Firebase collections _records_, _models_, and _groups_ respectively. These collection names may change. No other collections or subcollections are necessary at this moment.
+This directory contains example JSON structures for records (record.json), models (model.json), and groups (group.json), which represent single documents under the Firebase collections _route\_records_, _route\_models_, and _route\_groups_ respectively. These collection names may change. No other collections or subcollections are necessary at this moment.
 
 Overall notes:
 - all `checkoutTime`s and `checkinTime`s are Firebase timestamp types

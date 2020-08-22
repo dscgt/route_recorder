@@ -10,9 +10,9 @@ import 'package:sembast/sembast_io.dart';
 import 'package:route_recorder/classes.dart' as Classes;
 
 Firestore db = Firestore.instance;
-final String recordModelsCollectionName = 'models';
-final String recordsCollectionName = 'records';
-final String groupsCollectionName = 'groups';
+final String modelsCollectionName = 'route_models';
+final String recordsCollectionName = 'route_records';
+final String groupsCollectionName = 'route_groups';
 final String localDbUnfinishedRecordsName = 'unfinished_records';
 
 /// Gets the path on local filesystem that will be used to reference local
@@ -25,7 +25,7 @@ Future<String> getLocalDbPath() async {
 /// Get route models from Firebase, and convert to a format that the app can
 /// use.
 Future<Classes.RoutesRetrieval> getAllRoutes() {
-  return db.collection(recordModelsCollectionName).getDocuments().then((QuerySnapshot snap) {
+  return db.collection(modelsCollectionName).getDocuments().then((QuerySnapshot snap) {
     return Classes.RoutesRetrieval(
       routes: snap.documents.map((DocumentSnapshot ds) {
         Classes.Model toReturn = Classes.Model.fromMap(ds.data);
