@@ -21,4 +21,4 @@ Currently, for development, this code can be run in Android Studio.
 The app isn't very interesting without route options, which require route models to be added to the database. See `models/model.json` for these models' structure, and [here](https://github.com/dscgt/route_recorder/blob/master/models/README.md) for more info.
 
 ## About
-Made by the [Developer Student Club at Georgia Tech](https://dsc.gt/). 
+Made by the [Developer Student Club at Georgia Tech](https://dscgt.club/). 
