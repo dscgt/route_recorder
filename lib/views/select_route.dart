@@ -85,7 +85,8 @@ class _SelectRouteState extends State<SelectRoute> {
 
   Future<dynamic> getUnfinished() async {
     try {
-      List<UnfinishedRoute> theseUnfinishedRoutes = await getUnfinishedRoutes();
+      List<UnfinishedRoute> theseUnfinishedRoutes = (await getUnfinishedRoutes()).unfinishedRoutes;
+
       setState(() {
         unfinishedRoutes = theseUnfinishedRoutes;
         selectedUnfinishedRoute = theseUnfinishedRoutes.length > 0
@@ -131,7 +132,7 @@ class _SelectRouteState extends State<SelectRoute> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Are you sure you want to delete your progress? There\'s no going back!'),
+          title: const Text('ARE YOU SURE you want to delete this route in-progress? There\'s NO going back. Please DO NOT delete other people\'s routes that are in-progress.'),
           actions: <Widget>[
             FlatButton(
               onPressed: () {
@@ -218,7 +219,7 @@ class _SelectRouteState extends State<SelectRoute> {
           child: Text(
             'Select a route below and tap "Begin Route" to begin a route.',
             style: TextStyle(
-              fontSize: 18.0
+              fontSize: 20.0
             ),
             textAlign: TextAlign.center,
           ),
@@ -266,11 +267,11 @@ class _SelectRouteState extends State<SelectRoute> {
             child: SizedBox(
               width: MediaQuery.of(context).size.width * 0.7,
               child: Text(
-                'Alternatively, if you\'ve saved routes for later, they\'ll'
-                + ' show up here along with their start times. You can resume these'
-                + ' at any time:',
+                'Here, you can resume routes that someone didn\'t finish and saved'
+                + ' for another day. You probably don\'t need to be using these unless'
+                + ' someone asked you to:',
                 style: TextStyle(
-                  fontSize: 18.0
+                  fontSize: 17.0
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -298,7 +299,7 @@ class _SelectRouteState extends State<SelectRoute> {
                 ).toList(),
               )
             : Text(
-                'Nothing yet!'
+                '(No in-progress routes found.)'
               ),
           unfinishedRoutes.length > 0
             ? Row(

@@ -1,5 +1,5 @@
 
-This directory contains example JSON structures for records (record.json), models (model.json), and groups (group.json), which represent single documents under the Firebase collections _route\_records_, _route\_models_, and _route\_groups_ respectively. These collection names may change. No other collections or subcollections are necessary at this moment.
+This directory contains example JSON structures for records (record.json), in-progress records (record_in_progress.json), models (model.json), and groups (group.json), which represent single documents under the Firebase collections `route_records`, `route_records_in_progress`, `route_models`, and `route_groups` respectively. This directory should be kept updated whenever structures and/or collection names change. These JSON files serve just as references; they are not used programmatically.
 
 Overall notes:
 - all `checkoutTime`s and `checkinTime`s are Firebase timestamp types
@@ -15,3 +15,8 @@ Notes about model.json:
 Notes about record.json:
 - the `properties` field's key-value pairs are the fields defined by the record's respective model. The key-value pairs of `properties` under objects of the `stops` array are defined by the stop's respective model within the parent model.
 - `modelId` is a Firebase reference type
+
+Notes about record_in_progress.json:
+- the "record" property's value takes the structure of record.json's object
+- the "model" property's value takes the structure of model.json's object
+   - while it may be tempting, this should not be changed to be of a Firebase reference type for pointing to documents under the `models` collection, in order to avoid inconsistencies when a model changes while records utilizing that model are in progress

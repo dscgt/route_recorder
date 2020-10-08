@@ -36,6 +36,21 @@ class GroupsRetrieval {
   });
 }
 
+/// Stores information regarding a retrieval of unfinished routes.
+class UnfinishedRoutesRetrieval {
+  /// Routes that were successfully retrieved.
+  final List<UnfinishedRoute> unfinishedRoutes;
+
+  /// The cache status of the routes; a value of "true" indicates that [routes]
+  /// were retrieved from cache, indicating no internet connection.
+  final bool fromCache;
+
+  UnfinishedRoutesRetrieval({
+    this.unfinishedRoutes,
+    this.fromCache
+  });
+}
+
 class Group {
   final List<String> members;
   String id;
@@ -285,18 +300,30 @@ class Record {
   });
 
   static Record fromMap(Map<String, dynamic> map) {
+    DateTime startTime;
+    if (map['startTime'] is DateTime) {
+      startTime = map['startTime'];
+    } else if (map['startTime'] is Timestamp) {
+      startTime = map['startTime'].toDate();
+    } else { // assume int type, UNIX-valued timestamp
+      startTime = DateTime.fromMillisecondsSinceEpoch(map['startTime'] * 1000);
+    }
+    DateTime endTime;
+    if (map['endTime'] is DateTime || map['endTime'] == null) {
+      // null case to handle in-progress records, which don't have an endTime
+      endTime = map['endTime'];
+    } else if (map['endTime'] is Timestamp) {
+      endTime = map['endTime'].toDate();
+    } else { // assume int type, UNIX-valued timestamp
+      endTime = DateTime.fromMillisecondsSinceEpoch(map['endTime'] * 1000);
+    }
+
     return Record(
       modelId: map['modelId'],
       modelTitle: map['modelTitle'],
       properties: map['properties'].cast<String, String>(),
-      startTime: map['startTime'] is DateTime
-        ? map['startTime']
-        : DateTime.fromMillisecondsSinceEpoch(map['startTime'] * 1000),
-      endTime: map['endTime'] is DateTime
-        ? map['endTime']
-        : map['endTime'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['endTime'] * 1000)
-          : null,
+      startTime: startTime,
+      endTime: endTime,
       id: map['id'],
       stops: map['stops'].map((dynamic stop) =>
         RecordStop.fromMap(stop)
