@@ -280,6 +280,39 @@ class RecordStop {
   }
 }
 
+class RecordSaveObject {
+  final List<String> stops;
+  final DateTime saveTime;
+
+  RecordSaveObject({
+    @required this.stops,
+    @required this.saveTime
+  });
+
+  static RecordSaveObject fromMap(Map<String, dynamic> map) {
+    // handle saveTime formats
+    DateTime saveTime;
+    if (map['saveTime'] is DateTime) {
+      saveTime = map['saveTime'];
+    } else if (map['saveTime'] is Timestamp) {
+      saveTime = map['saveTime'].toDate();
+    } else { // assume int type, UNIX-valued timestamp
+      saveTime = DateTime.fromMillisecondsSinceEpoch(map['saveTime'] * 1000);
+    }
+    return RecordSaveObject(
+      stops: map['stops'].cast<String>(),
+      saveTime: saveTime,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'stops': stops,
+      'saveTime': saveTime
+    };
+  }
+}
+
 class Record {
   final String modelId;
   final String modelTitle;
@@ -287,6 +320,7 @@ class Record {
   final List<RecordStop> stops;
   final DateTime startTime;
   final DateTime endTime;
+  final List<RecordSaveObject> saves;
   String id;
 
   Record({
@@ -296,10 +330,12 @@ class Record {
     @required this.stops,
     @required this.startTime,
     @required this.endTime,
+    @required this.saves,
     this.id,
   });
 
   static Record fromMap(Map<String, dynamic> map) {
+    // handle starTime, endTime formats
     DateTime startTime;
     if (map['startTime'] is DateTime) {
       startTime = map['startTime'];
@@ -327,7 +363,10 @@ class Record {
       id: map['id'],
       stops: map['stops'].map((dynamic stop) =>
         RecordStop.fromMap(stop)
-      ).toList().cast<RecordStop>()
+      ).toList().cast<RecordStop>(),
+      saves: map['saves'].map((dynamic save) =>
+        RecordSaveObject.fromMap(save)
+      ).toList().cast<RecordSaveObject>(),
     );
   }
 
@@ -340,8 +379,11 @@ class Record {
       'endTime': endTime,
       'id': id,
       'stops': stops.map((RecordStop stop) =>
-        stop.toMap()
-      ).toList()
+        stop.toMap(),
+      ).toList(),
+      'saves': saves.map((RecordSaveObject save) =>
+        save.toMap()
+      ).toList(),
     };
   }
 }

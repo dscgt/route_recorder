@@ -271,13 +271,37 @@ class ActiveRouteState extends State<ActiveRoute> {
       )
     ).toList();
 
+    // create titles for `saves` property
+    List<String> stopTitlesToSave = stopsToSave.map((RecordStop rs) => rs.title).toList();
+    // remove titles that belong to previous saves, if any exist
+    if (widget.activeRouteSavedData != null) {
+      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+        rso.stops.forEach((String s) {
+          int ind = stopTitlesToSave.indexOf(s);
+          if (ind != -1) {
+            stopTitlesToSave.removeAt(ind);
+          }
+        });
+      });
+    }
+    // add this save to previous saves, if any exist
+    List<RecordSaveObject> newSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      newSaves.addAll(widget.activeRouteSavedData.saves);
+    }
+    newSaves.add(RecordSaveObject(
+      stops: stopTitlesToSave,
+      saveTime: DateTime.now()
+    ));
+
     Record thisSubmission = Record(
       modelId: widget.activeRoute.id,
       modelTitle: widget.activeRoute.title,
       startTime: startTime,
       endTime: null,
       properties: propertiesToAdd,
-      stops: stopsToAddAsList
+      stops: stopsToAddAsList,
+      saves: newSaves
     );
 
     try {
@@ -372,13 +396,38 @@ class ActiveRouteState extends State<ActiveRoute> {
       )
     ).toList();
 
+    // create titles for `saves` property
+    List<String> stopTitlesToSave = stopsToAdd.map((RecordStop rs) => rs.title).toList();
+    // remove titles that belong to previous saves, if any exist
+    if (widget.activeRouteSavedData != null) {
+      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+        rso.stops.forEach((String s) {
+          int ind = stopTitlesToSave.indexOf(s);
+          if (ind != -1) {
+            stopTitlesToSave.removeAt(ind);
+          }
+        });
+      });
+    }
+    // add current save to previous saves, if any exist
+    List<RecordSaveObject> newSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      newSaves.addAll(widget.activeRouteSavedData.saves);
+    }
+    DateTime thisEndDate = DateTime.now();
+    newSaves.add(RecordSaveObject(
+      stops: stopTitlesToSave,
+      saveTime: thisEndDate
+    ));
+
     Record thisSubmission = Record(
       modelId: widget.activeRoute.id,
       modelTitle: widget.activeRoute.title,
       startTime: startTime,
-      endTime: DateTime.now(),
+      endTime: thisEndDate,
       properties: propertiesToAdd,
-      stops: stopsToAddAsList
+      stops: stopsToAddAsList,
+      saves: newSaves
     );
     /// Submit this route record, and direct user back to route selection if
     /// successful.
@@ -463,7 +512,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Are you sure you want to save this for later?'),
+          title: const Text('Are you sure you want to save this for later? You can resume it later. If someone else will be resuming it, they can resume it from their tablet.'),
           actions: <Widget>[
             FlatButton(
               onPressed: () {
