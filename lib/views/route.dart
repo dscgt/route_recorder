@@ -219,53 +219,65 @@ class ActiveRouteState extends State<ActiveRoute> {
       isLoading = true;
     });
 
-    /// Create a submission object from info entered by user. Doesn't create
-    /// properties for empty values; these are allowed to be null.
-    Map<String, String> propertiesToSave = {};
+    // Create a submission object from info entered by user. Doesn't create
+    // properties for empty values; these are allowed to be null.
+    // start by handling top-level fields
+    Map<String, String> propertiesToAdd = {};
     routeFields.forEach((String fieldName, TextEditingController fieldController) {
       if (fieldController.text.length > 0) {
-        propertiesToSave[fieldName] = fieldController.text;
+        propertiesToAdd[fieldName] = fieldController.text;
       }
     });
     routeFieldsForDropdown.forEach((String fieldName, String value) {
       if (value != null) {
-        propertiesToSave[fieldName] = value;
+        propertiesToAdd[fieldName] = value;
       }
     });
-
-    List<RecordStop> stopsToSave = [];
-    stopFields.forEach((String stopTitle, Map<String, TextEditingController> stopDetails) {
-      Map<String, String> stopPropertiesToSave = {};
+    // Then, we have to handle stop fields.
+    // First handle non-dropdown stop fields...
+    Map<String, Map<String, String>> stopsToAdd = stopFields.map((String stopTitle, Map<String, TextEditingController> stopDetails) {
+      Map<String, String> propertiesToAdd = {};
       stopDetails.forEach((String stopFieldTitle, TextEditingController controller) {
         if (controller.text.length > 0) {
-          stopPropertiesToSave[stopFieldTitle] = controller.text;
+          propertiesToAdd[stopFieldTitle] = controller.text;
         }
       });
-      stopsToSave.add(RecordStop(
-        title: stopTitle,
-        properties:  stopPropertiesToSave
-      ));
+      return MapEntry(
+        stopTitle,
+        propertiesToAdd
+      );
     });
+    // ...then handle dropdown stop fields
     stopFieldsForDropdown.forEach((String stopTitle, Map<String, String> stopDetails) {
-      Map<String, String> stopPropertiesToSave = {};
+      Map<String, String> propertiesToAdd = {};
       stopDetails.forEach((String stopFieldTitle, String value) {
         if (value != null) {
-          stopPropertiesToSave[stopFieldTitle] = value;
+          propertiesToAdd[stopFieldTitle] = value;
         }
       });
-      stopsToSave.add(RecordStop(
-        title: stopTitle,
-        properties:  stopPropertiesToSave
-      ));
+      propertiesToAdd.forEach((String fieldName, String fieldValue) {
+        if (!stopsToAdd.containsKey(stopTitle)) {
+          stopsToAdd[stopTitle] = {};
+        }
+        stopsToAdd[stopTitle][fieldName] = fieldValue;
+      });
     });
+    // Now that we have gathered both non-dropdown and dropdown fields, can
+    // build the list of RecordStop
+    List<RecordStop> stopsToAddAsList = stopsToAdd.entries.map((MapEntry<String, Map<String, String>> me) =>
+      RecordStop(
+        title: me.key,
+        properties: me.value
+      )
+    ).toList();
 
     Record thisSubmission = Record(
       modelId: widget.activeRoute.id,
       modelTitle: widget.activeRoute.title,
       startTime: startTime,
       endTime: null,
-      properties: propertiesToSave,
-      stops: stopsToSave
+      properties: propertiesToAdd,
+      stops: stopsToAddAsList
     );
 
     try {
@@ -314,7 +326,8 @@ class ActiveRouteState extends State<ActiveRoute> {
       isLoading = true;
     });
 
-    /// Create a submission object from info entered by user.
+    // Create a submission object from info entered by user.
+    // start by handling top-level fields
     Map<String, String> propertiesToAdd = {};
     routeFields.forEach((String fieldName, TextEditingController controller) {
       propertiesToAdd[fieldName] = controller.text;
@@ -322,31 +335,42 @@ class ActiveRouteState extends State<ActiveRoute> {
     routeFieldsForDropdown.forEach((String fieldName, String value) {
       propertiesToAdd[fieldName] = value;
     });
-    List<RecordStop> stopsToAdd = [];
-    stopFields.forEach((String stopTitle, Map<String, TextEditingController> stopDetails) {
+    // Then, we have to handle stop fields.
+    // First handle non-dropdown stop fields...
+    Map<String, Map<String, String>> stopsToAdd = stopFields.map((String stopTitle, Map<String, TextEditingController> stopDetails) {
       // change texteditingcontrollers into consumable maps, then filter maps
       // for excluded fields before adding to submission object
-      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
       Map<String, String> propertiesToAdd = stopDetails.map((String fieldName, TextEditingController controller) =>
         MapEntry(fieldName, controller.text)
       );
+      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
       propertiesToAdd.removeWhere((String fieldName, String fieldVal) => exclude.contains(fieldName));
-      stopsToAdd.add(RecordStop(
-        title: stopTitle,
-        properties: propertiesToAdd
-      ));
+      return MapEntry(
+        stopTitle,
+        propertiesToAdd
+      );
     });
+    // ...then handle dropdown stop fields
     stopFieldsForDropdown.forEach((String stopTitle, Map<String, String> stopDetails) {
       // filter dropdown maps for excluded fields before adding to submission object
-      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
-
       Map<String, String> propertiesToAdd = Map.from(stopDetails);
+      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
       propertiesToAdd.removeWhere((String fieldName, String fieldValue) => exclude.contains(fieldName));
-      stopsToAdd.add(RecordStop(
-        title: stopTitle,
-        properties:  propertiesToAdd
-      ));
+      propertiesToAdd.forEach((String fieldName, String fieldValue) {
+        if (!stopsToAdd.containsKey(stopTitle)) {
+          stopsToAdd[stopTitle] = {};
+        }
+        stopsToAdd[stopTitle][fieldName] = fieldValue;
+      });
     });
+    // Now that we have gathered both non-dropdown and dropdown fields, can
+    // build the list of RecordStop
+    List<RecordStop> stopsToAddAsList = stopsToAdd.entries.map((MapEntry<String, Map<String, String>> me) =>
+      RecordStop(
+        title: me.key,
+        properties: me.value
+      )
+    ).toList();
 
     Record thisSubmission = Record(
       modelId: widget.activeRoute.id,
@@ -354,9 +378,8 @@ class ActiveRouteState extends State<ActiveRoute> {
       startTime: startTime,
       endTime: DateTime.now(),
       properties: propertiesToAdd,
-      stops: stopsToAdd
+      stops: stopsToAddAsList
     );
-
     /// Submit this route record, and direct user back to route selection if
     /// successful.
     bool directlySuccessful;
