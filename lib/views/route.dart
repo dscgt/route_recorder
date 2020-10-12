@@ -271,13 +271,52 @@ class ActiveRouteState extends State<ActiveRoute> {
       )
     ).toList();
 
+    // create titles for `saves` property
+    // ONLY include a stop in 'saves' if ALL of its nonoptional fields have been
+    // filled out. Remember, once a stop is in 'saves' it is greyed out in
+    // further resumes!
+    List<String> stopTitlesToSave = [];
+    stopsToAddAsList.forEach((RecordStop rs) {
+      bool shouldAddThisStopToSave = true;
+      stopFieldsMeta[rs.title].forEach((String fieldTitle, StopField sf) {
+        if (!sf.optional && !rs.properties.containsKey(fieldTitle)) {
+          shouldAddThisStopToSave = false;
+        }
+      });
+      if (shouldAddThisStopToSave) {
+        stopTitlesToSave.add(rs.title);
+      }
+    });
+
+    // remove titles that belong to previous saves, if any exist
+    if (widget.activeRouteSavedData != null) {
+      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+        rso.stops.forEach((String s) {
+          int ind = stopTitlesToSave.indexOf(s);
+          if (ind != -1) {
+            stopTitlesToSave.removeAt(ind);
+          }
+        });
+      });
+    }
+    // add this save to previous saves, if any exist
+    List<RecordSaveObject> newSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      newSaves.addAll(widget.activeRouteSavedData.saves);
+    }
+    newSaves.add(RecordSaveObject(
+      stops: stopTitlesToSave,
+      saveTime: DateTime.now()
+    ));
+
     Record thisSubmission = Record(
       modelId: widget.activeRoute.id,
       modelTitle: widget.activeRoute.title,
       startTime: startTime,
       endTime: null,
       properties: propertiesToAdd,
-      stops: stopsToAddAsList
+      stops: stopsToAddAsList,
+      saves: newSaves
     );
 
     try {
@@ -372,13 +411,45 @@ class ActiveRouteState extends State<ActiveRoute> {
       )
     ).toList();
 
+    // create titles for `saves` property
+    // since we are submitting this route, these are just all titles that weren't covered
+    // by previous saves
+    List<String> stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
+        rs.properties.length > 0
+          ? rs.title
+          : null
+    ).toList();
+    stopTitlesToSave.removeWhere((String s) => s == null);
+    // remove titles that belong to previous saves, if any exist
+    if (widget.activeRouteSavedData != null) {
+      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+        rso.stops.forEach((String s) {
+          int ind = stopTitlesToSave.indexOf(s);
+          if (ind != -1) {
+            stopTitlesToSave.removeAt(ind);
+          }
+        });
+      });
+    }
+    // add current save to previous saves, if any exist
+    List<RecordSaveObject> newSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      newSaves.addAll(widget.activeRouteSavedData.saves);
+    }
+    DateTime thisEndDate = DateTime.now();
+    newSaves.add(RecordSaveObject(
+      stops: stopTitlesToSave,
+      saveTime: thisEndDate
+    ));
+
     Record thisSubmission = Record(
       modelId: widget.activeRoute.id,
       modelTitle: widget.activeRoute.title,
       startTime: startTime,
-      endTime: DateTime.now(),
+      endTime: thisEndDate,
       properties: propertiesToAdd,
-      stops: stopsToAddAsList
+      stops: stopsToAddAsList,
+      saves: newSaves
     );
     /// Submit this route record, and direct user back to route selection if
     /// successful.
@@ -463,7 +534,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Are you sure you want to save this for later?'),
+          title: const Text('Are you sure you want to save this for later? You can resume it later. If someone else will be resuming it, they can resume it from their tablet.'),
           actions: <Widget>[
             FlatButton(
               onPressed: () {
@@ -586,6 +657,13 @@ class ActiveRouteState extends State<ActiveRoute> {
                 fontSize: cardTextStyle.fontSize - 4.0
               ),
             ),
+            Text(
+              'If you\'re resuming a partially-completed route, the stops that have already been visited will be locked.',
+              style: cardTextStyle.copyWith(
+                fontSize: cardTextStyle.fontSize - 4.0
+              ),
+              textAlign: TextAlign.center,
+            ),
             ...theseFields
           ]
         )
@@ -597,16 +675,24 @@ class ActiveRouteState extends State<ActiveRoute> {
   /// route.
   Widget _buildStops() {
     List<String> ids = stopFieldsMeta.keys.toList();
+    // get stops included by all previous saves so we know if there are stops to grey out
+    List<String> allPreviousSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+        allPreviousSaves.addAll(rso.stops);
+      });
+    }
     return Column(
       children: ids.map((String stopTitle) {
-        List<Widget> rowElements = [];
+        bool thisStopEnabled = !allPreviousSaves.contains(stopTitle);
+        List<Widget> fieldsForUserEntry = [];
         stopFieldsMeta[stopTitle].forEach((String stopFieldTitle, StopField sf) {
           // don't include fields excluded by this stop
           if (stopMeta[stopTitle].exclude != null && stopMeta[stopTitle].exclude.contains(stopFieldTitle)) {
             return;
           }
           if (sf.type == FieldDataType.select) {
-            rowElements.add(
+            fieldsForUserEntry.add(
               DropdownButtonFormField<String>(
                 validator: (String value) {
                   if (value == null && !sf.optional) {
@@ -615,13 +701,18 @@ class ActiveRouteState extends State<ActiveRoute> {
                   return null;
                 },
                 value: stopFieldsForDropdown[stopTitle][stopFieldTitle],
-                hint: Text(stopFieldTitle),
+                // display already-entered data if resuming route and this is disabled
+                hint: thisStopEnabled
+                  ? Text(stopFieldTitle)
+                  : stopFieldsForDropdown[stopTitle][stopFieldTitle] ?? Text(stopFieldTitle),
                 icon: Icon(Icons.arrow_drop_down),
-                onChanged: (String newValue) {
-                  setState(() {
-                    stopFieldsForDropdown[stopTitle][stopFieldTitle] = newValue;
-                  });
-                },
+                onChanged: thisStopEnabled
+                  ? (String newValue) {
+                      setState(() {
+                        stopFieldsForDropdown[stopTitle][stopFieldTitle] = newValue;
+                      });
+                    }
+                  : null,
                 items: groupsMeta[sf.groupId].members.map((String member) =>
                   DropdownMenuItem<String>(
                     value: member,
@@ -634,9 +725,10 @@ class ActiveRouteState extends State<ActiveRoute> {
             TextInputType thisKeyboardType = sf.type == FieldDataType.number
               ? TextInputType.number
               : TextInputType.text;
-            rowElements.add(
+            fieldsForUserEntry.add(
               TextFormField(
                 controller: stopFields[stopTitle][stopFieldTitle],
+                enabled: thisStopEnabled,
                 validator: (value) {
                   if (value.isEmpty && !sf.optional) {
                     return 'Please enter a $stopFieldTitle.';
@@ -684,7 +776,7 @@ class ActiveRouteState extends State<ActiveRoute> {
                 ),
                 Expanded(
                  child: Column(
-                    children: rowElements
+                    children: fieldsForUserEntry
                   )
                 )
               ],

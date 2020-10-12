@@ -18,4 +18,10 @@
   ],
   "modelId": "modelId_here",
   "modelTitle": "modelTitle_here",
+  "saves": [
+    {
+      "stops": ["stop_title_1", "stop_title_2"],
+      "saveTime": "saveTime_here"
+    }
+  ]
 }

@@ -2,7 +2,7 @@
 This directory contains example JSON structures for records (record.json), in-progress records (record_in_progress.json), models (model.json), and groups (group.json), which represent single documents under the Firebase collections `route_records`, `route_records_in_progress`, `route_models`, and `route_groups` respectively. This directory should be kept updated whenever structures and/or collection names change. These JSON files serve just as references; they are not used programmatically.
 
 Overall notes:
-- all `checkoutTime`s and `checkinTime`s are Firebase timestamp types
+- all time-related fields (`startTime`, `endTime`, `saveTime`) Firebase timestamp types
 
 Notes about model.json:
 - the `type` field of objects under the `fields` array can take the following values: "string", "number", and "select"
@@ -15,6 +15,7 @@ Notes about model.json:
 Notes about record.json:
 - the `properties` field's key-value pairs are the fields defined by the record's respective model. The key-value pairs of `properties` under objects of the `stops` array are defined by the stop's respective model within the parent model.
 - `modelId` is a Firebase reference type
+- `saves` describes how stops are separated by route save. For example, if a crewmember does stops a, b, and c on one day, and then saves it, and then he/she (or another crewmember) does stops d and e on another day, `saves` will express this. `saveTime` describes the time of saving. If a route did not need to be saved for resumption later (most routes will fall under this), `saves` will have only one entry
 
 Notes about record_in_progress.json:
 - the "record" property's value takes the structure of record.json's object
