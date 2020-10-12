@@ -97,8 +97,10 @@ Future<Classes.UnfinishedRoutesRetrieval> getUnfinishedRoutes() async {
     return Classes.UnfinishedRoutesRetrieval(
         unfinishedRoutes: snap.documents.map((DocumentSnapshot ds) {
           Classes.UnfinishedRoute toReturn = Classes.UnfinishedRoute.fromMap(ds.data);
-          /// also include model ID
+          /// also include unfinished route ID
           toReturn.id = ds.documentID;
+          // and include the route model's ID
+          toReturn.model.id = toReturn.record.modelId;
           return toReturn;
         }).toList(),
         fromCache: snap.metadata.isFromCache
@@ -116,9 +118,11 @@ Future<bool> saveRecord(Classes.UnfinishedRoute unfinishedRoute) async {
   // make transformations for Firebase:
   //   - remove the ID, save for document replacement
   //   - remove the model's ID
+  //   - remove the record's ID
   //   - convert enums to strings
   String id = toAdd.remove('id');
   toAdd['model'].remove('id');
+  toAdd['record'].remove('id');
   toAdd['model']['fields'].forEach((Map modelFields) {
     modelFields['type'] = fieldDataTypeToString(modelFields['type']);
   });

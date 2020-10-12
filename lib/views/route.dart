@@ -272,7 +272,13 @@ class ActiveRouteState extends State<ActiveRoute> {
     ).toList();
 
     // create titles for `saves` property
-    List<String> stopTitlesToSave = stopsToSave.map((RecordStop rs) => rs.title).toList();
+    List<String> stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
+        rs.properties.length > 0
+          ? rs.title
+          : null
+    ).toList();
+    stopTitlesToSave.removeWhere((String s) => s == null);
+    print(stopTitlesToSave);
     // remove titles that belong to previous saves, if any exist
     if (widget.activeRouteSavedData != null) {
       widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
@@ -397,7 +403,12 @@ class ActiveRouteState extends State<ActiveRoute> {
     ).toList();
 
     // create titles for `saves` property
-    List<String> stopTitlesToSave = stopsToAdd.map((RecordStop rs) => rs.title).toList();
+    List<String> stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
+        rs.properties.length > 0
+          ? rs.title
+          : null
+    ).toList();
+    stopTitlesToSave.removeWhere((String s) => s == null);
     // remove titles that belong to previous saves, if any exist
     if (widget.activeRouteSavedData != null) {
       widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
