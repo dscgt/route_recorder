@@ -272,13 +272,22 @@ class ActiveRouteState extends State<ActiveRoute> {
     ).toList();
 
     // create titles for `saves` property
-    List<String> stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
-        rs.properties.length > 0
-          ? rs.title
-          : null
-    ).toList();
-    stopTitlesToSave.removeWhere((String s) => s == null);
-    print(stopTitlesToSave);
+    // ONLY include a stop in 'saves' if ALL of its nonoptional fields have been
+    // filled out. Remember, once a stop is in 'saves' it is greyed out in
+    // further resumes!
+    List<String> stopTitlesToSave = [];
+    stopsToAddAsList.forEach((RecordStop rs) {
+      bool shouldAddThisStopToSave = true;
+      stopFieldsMeta[rs.title].forEach((String fieldTitle, StopField sf) {
+        if (!sf.optional && !rs.properties.containsKey(fieldTitle)) {
+          shouldAddThisStopToSave = false;
+        }
+      });
+      if (shouldAddThisStopToSave) {
+        stopTitlesToSave.add(rs.title);
+      }
+    });
+
     // remove titles that belong to previous saves, if any exist
     if (widget.activeRouteSavedData != null) {
       widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
@@ -403,6 +412,8 @@ class ActiveRouteState extends State<ActiveRoute> {
     ).toList();
 
     // create titles for `saves` property
+    // since we are submitting this route, these are just all titles that weren't covered
+    // by previous saves
     List<String> stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
         rs.properties.length > 0
           ? rs.title
