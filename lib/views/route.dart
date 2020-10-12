@@ -657,6 +657,13 @@ class ActiveRouteState extends State<ActiveRoute> {
                 fontSize: cardTextStyle.fontSize - 4.0
               ),
             ),
+            Text(
+              'If you\'re resuming a partially-completed route, the stops that have already been visited will be locked.',
+              style: cardTextStyle.copyWith(
+                fontSize: cardTextStyle.fontSize - 4.0
+              ),
+              textAlign: TextAlign.center,
+            ),
             ...theseFields
           ]
         )
@@ -668,16 +675,24 @@ class ActiveRouteState extends State<ActiveRoute> {
   /// route.
   Widget _buildStops() {
     List<String> ids = stopFieldsMeta.keys.toList();
+    // get stops included by all previous saves so we know if there are stops to grey out
+    List<String> allPreviousSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+        allPreviousSaves.addAll(rso.stops);
+      });
+    }
     return Column(
       children: ids.map((String stopTitle) {
-        List<Widget> rowElements = [];
+        bool thisStopEnabled = !allPreviousSaves.contains(stopTitle);
+        List<Widget> fieldsForUserEntry = [];
         stopFieldsMeta[stopTitle].forEach((String stopFieldTitle, StopField sf) {
           // don't include fields excluded by this stop
           if (stopMeta[stopTitle].exclude != null && stopMeta[stopTitle].exclude.contains(stopFieldTitle)) {
             return;
           }
           if (sf.type == FieldDataType.select) {
-            rowElements.add(
+            fieldsForUserEntry.add(
               DropdownButtonFormField<String>(
                 validator: (String value) {
                   if (value == null && !sf.optional) {
@@ -686,13 +701,18 @@ class ActiveRouteState extends State<ActiveRoute> {
                   return null;
                 },
                 value: stopFieldsForDropdown[stopTitle][stopFieldTitle],
-                hint: Text(stopFieldTitle),
+                // display already-entered data if resuming route and this is disabled
+                hint: thisStopEnabled
+                  ? Text(stopFieldTitle)
+                  : stopFieldsForDropdown[stopTitle][stopFieldTitle] ?? Text(stopFieldTitle),
                 icon: Icon(Icons.arrow_drop_down),
-                onChanged: (String newValue) {
-                  setState(() {
-                    stopFieldsForDropdown[stopTitle][stopFieldTitle] = newValue;
-                  });
-                },
+                onChanged: thisStopEnabled
+                  ? (String newValue) {
+                      setState(() {
+                        stopFieldsForDropdown[stopTitle][stopFieldTitle] = newValue;
+                      });
+                    }
+                  : null,
                 items: groupsMeta[sf.groupId].members.map((String member) =>
                   DropdownMenuItem<String>(
                     value: member,
@@ -705,9 +725,10 @@ class ActiveRouteState extends State<ActiveRoute> {
             TextInputType thisKeyboardType = sf.type == FieldDataType.number
               ? TextInputType.number
               : TextInputType.text;
-            rowElements.add(
+            fieldsForUserEntry.add(
               TextFormField(
                 controller: stopFields[stopTitle][stopFieldTitle],
+                enabled: thisStopEnabled,
                 validator: (value) {
                   if (value.isEmpty && !sf.optional) {
                     return 'Please enter a $stopFieldTitle.';
@@ -755,7 +776,7 @@ class ActiveRouteState extends State<ActiveRoute> {
                 ),
                 Expanded(
                  child: Column(
-                    children: rowElements
+                    children: fieldsForUserEntry
                   )
                 )
               ],
