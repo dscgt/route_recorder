@@ -1,38 +1,23 @@
 
-import 'dart:io';
-
-import 'package:path/path.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:route_recorder/utils.dart';
-// keep sembast around; it may still be useful for automatic route saving on app crash in future.
-import 'package:sembast/sembast.dart';
-import 'package:sembast/sembast_io.dart';
 import 'package:route_recorder/classes.dart' as Classes;
 
-Firestore db = Firestore.instance;
+FirebaseFirestore firestore = FirebaseFirestore.instance;
 final String modelsCollectionName = 'route_models';
 final String recordsCollectionName = 'route_records';
 final String unfinishedRecordsCollectionName = 'route_records_in_progress';
 final String groupsCollectionName = 'route_groups';
 
-/// Gets the path on local filesystem that will be used to reference local
-/// storage for Sembast.
-/// Currently unused, but may still be useful for automatic route saving on app crash in future.
-Future<String> getLocalDbPath() async {
-  Directory directory = await getApplicationDocumentsDirectory();
-  return join(directory.path, 'route_recorder.db');
-}
-
 /// Get route models from Firebase, and convert to a format that the app can
 /// use.
 Future<Classes.RoutesRetrieval> getAllRoutes() {
-  return db.collection(modelsCollectionName).getDocuments().then((QuerySnapshot snap) {
+  return firestore.collection(modelsCollectionName).get().then((QuerySnapshot snap) {
     return Classes.RoutesRetrieval(
-      routes: snap.documents.map((DocumentSnapshot ds) {
-        Classes.Model toReturn = Classes.Model.fromMap(ds.data);
+      routes: snap.docs.map((DocumentSnapshot ds) {
+        Classes.Model toReturn = Classes.Model.fromMap(ds.data());
         /// also include model ID
-        toReturn.id = ds.documentID;
+        toReturn.id = ds.id;
         return toReturn;
       }).toList(),
       fromCache: snap.metadata.isFromCache
@@ -43,12 +28,12 @@ Future<Classes.RoutesRetrieval> getAllRoutes() {
 /// Get groups from Firebase, and convert to a format that the app can
 /// use.
 Future<Classes.GroupsRetrieval> getAllGroups() {
-  return db.collection(groupsCollectionName).getDocuments().then((QuerySnapshot snap) {
+  return firestore.collection(groupsCollectionName).get().then((QuerySnapshot snap) {
     return Classes.GroupsRetrieval(
-      groups: snap.documents.map((DocumentSnapshot ds) {
-        Classes.Group toReturn = Classes.Group.fromMap(ds.data);
+      groups: snap.docs.map((DocumentSnapshot ds) {
+        Classes.Group toReturn = Classes.Group.fromMap(ds.data());
         /// also include model ID
-        toReturn.id = ds.documentID;
+        toReturn.id = ds.id;
         return toReturn;
       }).toList(),
       fromCache: snap.metadata.isFromCache
@@ -69,21 +54,21 @@ Future<Classes.GroupsRetrieval> getGroups(List<String> ids) async {
 
   List<Future<DocumentSnapshot>> promises = ids
     .map((String id) =>
-      db.collection(groupsCollectionName)
-      .document(id)
+      firestore.collection(groupsCollectionName)
+      .doc(id)
       .get())
     .toList();
   List<DocumentSnapshot> result = await Future.wait(promises);
   Iterable<DocumentSnapshot> nonExistants = result.where((DocumentSnapshot ds) => !ds.exists);
   if (nonExistants.length > 0) {
-    throw new Exception('Attempted to get groups that do not exist: ${nonExistants.map((DocumentSnapshot ds) => ds.documentID).join(', ')}');
+    throw new Exception('Attempted to get groups that do not exist: ${nonExistants.map((DocumentSnapshot ds) => ds.id).join(', ')}');
   }
 
   return Classes.GroupsRetrieval(
     groups: result.map((DocumentSnapshot ds) {
-      Classes.Group toReturn = Classes.Group.fromMap(ds.data);
+      Classes.Group toReturn = Classes.Group.fromMap(ds.data());
       /// also include model ID
-      toReturn.id = ds.documentID;
+      toReturn.id = ds.id;
       return toReturn;
     }).toList(),
     fromCache: result[0].metadata.isFromCache
@@ -93,12 +78,12 @@ Future<Classes.GroupsRetrieval> getGroups(List<String> ids) async {
 /// Retrieve unfinished routes from Firebase, and convert to a format that the
 /// app can use.
 Future<Classes.UnfinishedRoutesRetrieval> getUnfinishedRoutes() async {
-  return db.collection(unfinishedRecordsCollectionName).getDocuments().then((QuerySnapshot snap) {
+  return firestore.collection(unfinishedRecordsCollectionName).get().then((QuerySnapshot snap) {
     return Classes.UnfinishedRoutesRetrieval(
-        unfinishedRoutes: snap.documents.map((DocumentSnapshot ds) {
-          Classes.UnfinishedRoute toReturn = Classes.UnfinishedRoute.fromMap(ds.data);
+        unfinishedRoutes: snap.docs.map((DocumentSnapshot ds) {
+          Classes.UnfinishedRoute toReturn = Classes.UnfinishedRoute.fromMap(ds.data());
           /// also include unfinished route ID
-          toReturn.id = ds.documentID;
+          toReturn.id = ds.id;
           // and include the route model's ID
           toReturn.model.id = toReturn.record.modelId;
           return toReturn;
@@ -133,14 +118,14 @@ Future<bool> saveRecord(Classes.UnfinishedRoute unfinishedRoute) async {
   if (id != null) {
     // indicates that this unfinished record exists, so we perform a replace
     return Future.any([
-      db.collection(unfinishedRecordsCollectionName)
-          .document(id).setData(toAdd)
+      firestore.collection(unfinishedRecordsCollectionName)
+          .doc(id).set(toAdd)
           .then((onValue) => true),
       Future.delayed(Duration(seconds: 5), () => Future.value(false))
     ]);
   } else {
     return Future.any([
-      db.collection(unfinishedRecordsCollectionName)
+      firestore.collection(unfinishedRecordsCollectionName)
         .add(toAdd)
         .then((onValue) => true),
       Future.delayed(Duration(seconds: 5), () => Future.value(false))
@@ -156,8 +141,8 @@ Future<bool> saveRecord(Classes.UnfinishedRoute unfinishedRoute) async {
 /// being used to indicate caching due to unsuccessful internet connectivity.
 Future<bool> deleteUnfinishedRecord(String unfinishedRouteId) async {
   return Future.any([
-    db.collection(unfinishedRecordsCollectionName)
-      .document(unfinishedRouteId)
+    firestore.collection(unfinishedRecordsCollectionName)
+      .doc(unfinishedRouteId)
       .delete()
       .then((onValue) => true),
     Future.delayed(Duration(seconds: 5), () => Future.value(false))
@@ -176,7 +161,7 @@ Future<bool> submitRecord(Classes.Record record) {
   toAdd.remove('id');
 
   return Future.any([
-    db.collection(recordsCollectionName)
+    firestore.collection(recordsCollectionName)
       .add(toAdd)
       .then((onValue) => true),
     Future.delayed(Duration(seconds: 5), () => Future.value(false))
