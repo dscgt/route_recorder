@@ -109,8 +109,6 @@ class _MainState extends State<Main> {
             : null,
           body: finalToDisplay
         );
-
-        return Loading();
       }
     );
   }

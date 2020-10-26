@@ -213,35 +213,48 @@ class ActiveRouteState extends State<ActiveRoute> {
     });
   }
 
-  void saveRouteForLater() async {
-    setState(() {
-      loadingAfterButtonPress = true;
-      isLoading = true;
-    });
-
-    // Create a submission object from info entered by user. Doesn't create
-    // properties for empty values; these are allowed to be null.
+  /// Takes inputs of state and converts to a Record.
+  /// If [forSaving] is true, null and empty fields will be excluded,
+  /// 'saves' property will be handled differently, and there won't be an
+  /// end time. This is meant for routes to be saved for later.
+  Record formatInputsForDb(bool forSaving) {
+    // Create a submission object from info entered by user.
     // start by handling top-level fields
     Map<String, String> propertiesToAdd = {};
-    routeFields.forEach((String fieldName, TextEditingController fieldController) {
-      if (fieldController.text.length > 0) {
-        propertiesToAdd[fieldName] = fieldController.text;
+    routeFields.forEach((String fieldName, TextEditingController controller) {
+      if (forSaving) {
+        if (controller.text.length > 0) {
+          propertiesToAdd[fieldName] = controller.text;
+        }
+      } else {
+        propertiesToAdd[fieldName] = controller.text;
       }
     });
     routeFieldsForDropdown.forEach((String fieldName, String value) {
-      if (value != null) {
+      if (forSaving) {
+        if (value != null) {
+          propertiesToAdd[fieldName] = value;
+        }
+      } else {
         propertiesToAdd[fieldName] = value;
       }
     });
     // Then, we have to handle stop fields.
     // First handle non-dropdown stop fields...
     Map<String, Map<String, String>> stopsToAdd = stopFields.map((String stopTitle, Map<String, TextEditingController> stopDetails) {
-      Map<String, String> propertiesToAdd = {};
-      stopDetails.forEach((String stopFieldTitle, TextEditingController controller) {
-        if (controller.text.length > 0) {
-          propertiesToAdd[stopFieldTitle] = controller.text;
-        }
-      });
+      // change texteditingcontrollers into consumable maps, then filter maps
+      // before adding to submission object
+      Map<String, String> propertiesToAdd = stopDetails.map((String fieldName, TextEditingController controller) =>
+        MapEntry(fieldName, controller.text)
+      );
+      // remove fields which are empty if this record is for saving
+      // otherwise, remove excluded fields for submission
+      if (forSaving) {
+        propertiesToAdd.removeWhere((String fieldName, String fieldVal) => fieldVal.length == 0);
+      } else {
+        List<String> exclude = stopMeta[stopTitle].exclude ?? [];
+        propertiesToAdd.removeWhere((String fieldName, String fieldVal) => exclude.contains(fieldName));
+      }
       return MapEntry(
         stopTitle,
         propertiesToAdd
@@ -249,12 +262,14 @@ class ActiveRouteState extends State<ActiveRoute> {
     });
     // ...then handle dropdown stop fields
     stopFieldsForDropdown.forEach((String stopTitle, Map<String, String> stopDetails) {
-      Map<String, String> propertiesToAdd = {};
-      stopDetails.forEach((String stopFieldTitle, String value) {
-        if (value != null) {
-          propertiesToAdd[stopFieldTitle] = value;
-        }
-      });
+      // filter dropdown maps for excluded fields before adding to submission object
+      Map<String, String> propertiesToAdd = Map.from(stopDetails);
+      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
+      if (forSaving) {
+        propertiesToAdd.removeWhere((String fieldName, String fieldValue) => fieldValue == null);
+      } else {
+        propertiesToAdd.removeWhere((String fieldName, String fieldValue) => exclude.contains(fieldName));
+      }
       propertiesToAdd.forEach((String fieldName, String fieldValue) {
         if (!stopsToAdd.containsKey(stopTitle)) {
           stopsToAdd[stopTitle] = {};
@@ -271,23 +286,41 @@ class ActiveRouteState extends State<ActiveRoute> {
       )
     ).toList();
 
-    // create titles for `saves` property
-    // ONLY include a stop in 'saves' if ALL of its nonoptional fields have been
-    // filled out. Remember, once a stop is in 'saves' it is greyed out in
-    // further resumes!
-    List<String> stopTitlesToSave = [];
-    stopsToAddAsList.forEach((RecordStop rs) {
-      bool shouldAddThisStopToSave = true;
-      stopFieldsMeta[rs.title].forEach((String fieldTitle, StopField sf) {
-        if (!sf.optional && !rs.properties.containsKey(fieldTitle)) {
-          shouldAddThisStopToSave = false;
+    // get previous saves if existing
+    List<RecordSaveObject> newSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      newSaves.addAll(widget.activeRouteSavedData.saves);
+    }
+    DateTime sessionEnd = DateTime.now();
+    // start building updated 'saves',
+    List<String> stopTitlesToSave;
+    if (forSaving) {
+      // ONLY include a stop in 'saves' if ALL of its nonoptional, nonexcluded fields have been
+      // filled out. Remember, once a stop is in 'saves' it is greyed out in
+      // further resumes!
+      stopTitlesToSave = [];
+      stopsToAddAsList.forEach((RecordStop rs) {
+        bool shouldAddThisStopToSave = true;
+        stopFieldsMeta[rs.title].forEach((String fieldTitle, StopField sf) {
+          // translation: if this stop field is not option, AND it's not excluded from this stop, AND this stop field has no value
+          if (!sf.optional && !stopMeta[rs.title].exclude.contains(fieldTitle) && !rs.properties.containsKey(fieldTitle)) {
+            shouldAddThisStopToSave = false;
+          }
+        });
+        if (shouldAddThisStopToSave) {
+          stopTitlesToSave.add(rs.title);
         }
       });
-      if (shouldAddThisStopToSave) {
-        stopTitlesToSave.add(rs.title);
-      }
-    });
-
+    } else {
+      // since we are submitting this route, these are just all titles that weren't covered
+      // by previous saves
+      stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
+      rs.properties.length > 0
+          ? rs.title
+          : null
+      ).toList();
+      stopTitlesToSave.removeWhere((String s) => s == null);
+    }
     // remove titles that belong to previous saves, if any exist
     if (widget.activeRouteSavedData != null) {
       widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
@@ -299,25 +332,37 @@ class ActiveRouteState extends State<ActiveRoute> {
         });
       });
     }
-    // add this save to previous saves, if any exist
-    List<RecordSaveObject> newSaves = [];
-    if (widget.activeRouteSavedData != null) {
-      newSaves.addAll(widget.activeRouteSavedData.saves);
-    }
+    // add current save to previous saves, if any exist
     newSaves.add(RecordSaveObject(
-      stops: stopTitlesToSave,
-      saveTime: DateTime.now()
+        stops: stopTitlesToSave,
+        saveTime: sessionEnd
     ));
+
+    // don't include end time if this isn't a submission
+    DateTime thisEndDate = forSaving
+      ? null
+      : sessionEnd;
 
     Record thisSubmission = Record(
       modelId: widget.activeRoute.id,
       modelTitle: widget.activeRoute.title,
       startTime: startTime,
-      endTime: null,
+      endTime: thisEndDate,
       properties: propertiesToAdd,
       stops: stopsToAddAsList,
       saves: newSaves
     );
+
+    return thisSubmission;
+  }
+
+  void saveRouteForLater() async {
+    setState(() {
+      loadingAfterButtonPress = true;
+      isLoading = true;
+    });
+
+    Record thisSubmission = formatInputsForDb(true);
 
     try {
       await saveRecord(UnfinishedRoute(
@@ -364,93 +409,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       loadingAfterButtonPress = true;
       isLoading = true;
     });
-
-    // Create a submission object from info entered by user.
-    // start by handling top-level fields
-    Map<String, String> propertiesToAdd = {};
-    routeFields.forEach((String fieldName, TextEditingController controller) {
-      propertiesToAdd[fieldName] = controller.text;
-    });
-    routeFieldsForDropdown.forEach((String fieldName, String value) {
-      propertiesToAdd[fieldName] = value;
-    });
-    // Then, we have to handle stop fields.
-    // First handle non-dropdown stop fields...
-    Map<String, Map<String, String>> stopsToAdd = stopFields.map((String stopTitle, Map<String, TextEditingController> stopDetails) {
-      // change texteditingcontrollers into consumable maps, then filter maps
-      // for excluded fields before adding to submission object
-      Map<String, String> propertiesToAdd = stopDetails.map((String fieldName, TextEditingController controller) =>
-        MapEntry(fieldName, controller.text)
-      );
-      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
-      propertiesToAdd.removeWhere((String fieldName, String fieldVal) => exclude.contains(fieldName));
-      return MapEntry(
-        stopTitle,
-        propertiesToAdd
-      );
-    });
-    // ...then handle dropdown stop fields
-    stopFieldsForDropdown.forEach((String stopTitle, Map<String, String> stopDetails) {
-      // filter dropdown maps for excluded fields before adding to submission object
-      Map<String, String> propertiesToAdd = Map.from(stopDetails);
-      List<String> exclude = stopMeta[stopTitle].exclude ?? [];
-      propertiesToAdd.removeWhere((String fieldName, String fieldValue) => exclude.contains(fieldName));
-      propertiesToAdd.forEach((String fieldName, String fieldValue) {
-        if (!stopsToAdd.containsKey(stopTitle)) {
-          stopsToAdd[stopTitle] = {};
-        }
-        stopsToAdd[stopTitle][fieldName] = fieldValue;
-      });
-    });
-    // Now that we have gathered both non-dropdown and dropdown fields, can
-    // build the list of RecordStop
-    List<RecordStop> stopsToAddAsList = stopsToAdd.entries.map((MapEntry<String, Map<String, String>> me) =>
-      RecordStop(
-        title: me.key,
-        properties: me.value
-      )
-    ).toList();
-
-    // create titles for `saves` property
-    // since we are submitting this route, these are just all titles that weren't covered
-    // by previous saves
-    List<String> stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
-        rs.properties.length > 0
-          ? rs.title
-          : null
-    ).toList();
-    stopTitlesToSave.removeWhere((String s) => s == null);
-    // remove titles that belong to previous saves, if any exist
-    if (widget.activeRouteSavedData != null) {
-      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
-        rso.stops.forEach((String s) {
-          int ind = stopTitlesToSave.indexOf(s);
-          if (ind != -1) {
-            stopTitlesToSave.removeAt(ind);
-          }
-        });
-      });
-    }
-    // add current save to previous saves, if any exist
-    List<RecordSaveObject> newSaves = [];
-    if (widget.activeRouteSavedData != null) {
-      newSaves.addAll(widget.activeRouteSavedData.saves);
-    }
-    DateTime thisEndDate = DateTime.now();
-    newSaves.add(RecordSaveObject(
-      stops: stopTitlesToSave,
-      saveTime: thisEndDate
-    ));
-
-    Record thisSubmission = Record(
-      modelId: widget.activeRoute.id,
-      modelTitle: widget.activeRoute.title,
-      startTime: startTime,
-      endTime: thisEndDate,
-      properties: propertiesToAdd,
-      stops: stopsToAddAsList,
-      saves: newSaves
-    );
+    Record thisSubmission = formatInputsForDb(false);
     /// Submit this route record, and direct user back to route selection if
     /// successful.
     bool directlySuccessful;
