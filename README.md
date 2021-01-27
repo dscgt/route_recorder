@@ -6,6 +6,16 @@ This is part of a suite of apps made for Georgia Tech's [OSWM&R](http://www.recy
 * [recycling-checkin](https://github.com/dscgt/recycling_checkin): Daily check-out/check-in for recycling department crewmembers needing GT property
 * [recycling-website](https://github.com/dscgt/recycling_website): Management and data viewing portal for recycling department administrators
 
+
+## Deployment
+
+The current deployment method builds this Flutter project as a webapp and deploys it with Github Pages. Do this with the `web-deploy` branch. More information [here](https://flutter.dev/docs/get-started/web#create-and-run) and [here](https://flutter.dev/docs/deployment/web).
+
+1. Make sure our [private Github repo](https://github.gatech.edu/dscgt/route_recorder_dist) is cloned to your machine
+1. Build this app for the web with `flutter build web`
+1. Copy the contents of the `build/web` directory to your clone of the private repo
+1. Push the changes of the private repo
+
 ## Running this code
 
 Currently, for development, this code can be run in Android Studio.
@@ -21,4 +31,5 @@ Currently, for development, this code can be run in Android Studio.
 The app isn't very interesting without route options, which require route models to be added to the database. See `models/model.json` for these models' structure, and [here](https://github.com/dscgt/route_recorder/blob/master/models/README.md) for more info.
 
 ## About
-Made by the [Developer Student Club at Georgia Tech](https://dscgt.club/). 
+Made by the [Developer Student Club at Georgia Tech](https://dscgt.club/).
+
