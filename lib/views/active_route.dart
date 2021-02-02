@@ -480,7 +480,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     widget.resetRoute();
   }
 
-  void _handleCancelRoute(BuildContext context) {
+  void _handleCancelRoute() {
     showDialog<ConfirmAction>(
       context: context,
       barrierDismissible: true,
@@ -507,7 +507,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     );
   }
 
-  void _handleSaveRouteForLater(BuildContext context) {
+  void _handleSaveRouteForLater() {
     showDialog<ConfirmAction>(
       context: context,
       barrierDismissible: true,
@@ -534,7 +534,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     );
   }
 
-  void _handleFinishRoute(BuildContext context) async {
+  void _handleFinishRoute() async {
     /// Validation check.
     if (!_formKey.currentState.validate()) {
       return;
@@ -595,7 +595,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     );
   }
 
-  Widget _buildSubmissionArea(BuildContext context) {
+  Widget _buildSubmissionArea() {
     return Column(
       children: <Widget>[
         Row(
@@ -610,7 +610,7 @@ class ActiveRouteState extends State<ActiveRoute> {
                 ),
                 onPressed: loadingAfterButtonPress
                   ? null
-                  : () => _handleCancelRoute(context)
+                  : () => _handleCancelRoute()
               ),
             ),
             Container(
@@ -622,7 +622,7 @@ class ActiveRouteState extends State<ActiveRoute> {
                 ),
                 onPressed: loadingAfterButtonPress
                   ? null
-                  : () => _handleSaveRouteForLater(context)
+                  : () => _handleSaveRouteForLater()
               ),
             ),
             RaisedButton(
@@ -632,7 +632,7 @@ class ActiveRouteState extends State<ActiveRoute> {
               ),
               onPressed: loadingAfterButtonPress
                 ? null
-                : () => _handleFinishRoute(context),
+                : () => _handleFinishRoute(),
             ),
           ]
         ),
@@ -648,6 +648,31 @@ class ActiveRouteState extends State<ActiveRoute> {
     if (isLoading) {
       return Loading();
     }
+
+    // int len = 2 + stopMeta.length;
+    // return Container(
+    //   padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
+    //   child: ListView.builder(
+    //     itemCount: len,
+    //     itemBuilder: (context, index) {
+    //       if (index == 0) {
+    //         return ActiveRouteTitleCard(
+    //           cardTextStyle: cardTextStyle,
+    //           title: widget.activeRoute.title,
+    //           routeMeta: routeMeta,
+    //           routeFields: routeFields,
+    //           routeFieldsForDropdown: routeFieldsForDropdown,
+    //           groupsMeta: groupsMeta,
+    //           onDropdownRouteFieldChanged: setRouteFieldForDropdown
+    //         );
+    //       }
+    //       if (index == len - 1) {
+    //
+    //       }
+    //       return someStop;
+    //     }
+    //   )
+    // );
 
     return SingleChildScrollView(
       child: Container(
@@ -666,7 +691,7 @@ class ActiveRouteState extends State<ActiveRoute> {
                 onDropdownRouteFieldChanged: setRouteFieldForDropdown
               ),
               _buildStops(),
-              _buildSubmissionArea(context)
+              _buildSubmissionArea()
             ],
           ),
         ),
