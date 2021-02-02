@@ -649,52 +649,53 @@ class ActiveRouteState extends State<ActiveRoute> {
       return Loading();
     }
 
-    // int len = 2 + stopMeta.length;
-    // return Container(
-    //   padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
-    //   child: ListView.builder(
-    //     itemCount: len,
-    //     itemBuilder: (context, index) {
-    //       if (index == 0) {
-    //         return ActiveRouteTitleCard(
-    //           cardTextStyle: cardTextStyle,
-    //           title: widget.activeRoute.title,
-    //           routeMeta: routeMeta,
-    //           routeFields: routeFields,
-    //           routeFieldsForDropdown: routeFieldsForDropdown,
-    //           groupsMeta: groupsMeta,
-    //           onDropdownRouteFieldChanged: setRouteFieldForDropdown
-    //         );
-    //       }
-    //       if (index == len - 1) {
-    //
-    //       }
-    //       return someStop;
-    //     }
-    //   )
-    // );
+    // get stops included by all previous saves so we know if there are stops to grey out
+    List<String> allPreviousSaves = [];
+    if (widget.activeRouteSavedData != null) {
+      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+        allPreviousSaves.addAll(rso.stops);
+      });
+    }
+    // build list of stops
+    List<String> ids = stopFieldsMeta.keys.toList();
 
-    return SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: <Widget>[
-              ActiveRouteTitleCard(
-                cardTextStyle: cardTextStyle,
-                title: widget.activeRoute.title,
-                routeMeta: routeMeta,
-                routeFields: routeFields,
-                routeFieldsForDropdown: routeFieldsForDropdown,
-                groupsMeta: groupsMeta,
-                onDropdownRouteFieldChanged: setRouteFieldForDropdown
-              ),
-              _buildStops(),
-              _buildSubmissionArea()
-            ],
-          ),
-        ),
+    int len = 2 + stopMeta.length;
+    return Container(
+      padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
+      // Listview *works*, but validation doesn't, since some form fields are NULL.
+      child: ListView.builder(
+        itemCount: len,
+        itemBuilder: (context, index) {
+          // first element is always the title card
+          if (index == 0) {
+            return ActiveRouteTitleCard(
+              cardTextStyle: cardTextStyle,
+              title: widget.activeRoute.title,
+              routeMeta: routeMeta,
+              routeFields: routeFields,
+              routeFieldsForDropdown: routeFieldsForDropdown,
+              groupsMeta: groupsMeta,
+              onDropdownRouteFieldChanged: setRouteFieldForDropdown
+            );
+          }
+          // last element is always the submission area
+          if (index == len - 1) {
+            return _buildSubmissionArea();
+          }
+          int stopIndex = index - 1;
+          String thisStopTitle = ids[stopIndex];
+          return ActiveRouteStop(
+            cardTextStyle: cardTextStyle,
+            title: thisStopTitle,
+            stopMeta: stopMeta,
+            stopFieldsMeta: stopFieldsMeta,
+            enabled: !allPreviousSaves.contains(thisStopTitle),
+            stopFieldsForDropdown: stopFieldsForDropdown,
+            stopFields: stopFields,
+            groupsMeta: groupsMeta,
+            onDropdownStopFieldChanged: setStopFieldForDropdown
+          );
+        }
       )
     );
   }
