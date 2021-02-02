@@ -656,46 +656,43 @@ class ActiveRouteState extends State<ActiveRoute> {
         allPreviousSaves.addAll(rso.stops);
       });
     }
-    // build list of stops
-    List<String> ids = stopFieldsMeta.keys.toList();
 
-    int len = 2 + stopMeta.length;
+    List<Widget> listViewChildren = [];
+    // first element is always the title card
+    listViewChildren.add(
+      ActiveRouteTitleCard(
+        cardTextStyle: cardTextStyle,
+        title: widget.activeRoute.title,
+        routeMeta: routeMeta,
+        routeFields: routeFields,
+        routeFieldsForDropdown: routeFieldsForDropdown,
+        groupsMeta: groupsMeta,
+        onDropdownRouteFieldChanged: setRouteFieldForDropdown
+      )
+    );
+    stopFieldsMeta.keys.forEach((String thisStopTitle) {
+      listViewChildren.add(
+        ActiveRouteStop(
+          cardTextStyle: cardTextStyle,
+          title: thisStopTitle,
+          stopMeta: stopMeta,
+          stopFieldsMeta: stopFieldsMeta,
+          enabled: !allPreviousSaves.contains(thisStopTitle),
+          stopFieldsForDropdown: stopFieldsForDropdown,
+          stopFields: stopFields,
+          groupsMeta: groupsMeta,
+          onDropdownStopFieldChanged: setStopFieldForDropdown
+        )
+      );
+    });
+    // last element is always the submission area
+    listViewChildren.add(_buildSubmissionArea());
+
     return Container(
       padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
       // Listview *works*, but validation doesn't, since some form fields are NULL.
-      child: ListView.builder(
-        itemCount: len,
-        itemBuilder: (context, index) {
-          // first element is always the title card
-          if (index == 0) {
-            return ActiveRouteTitleCard(
-              cardTextStyle: cardTextStyle,
-              title: widget.activeRoute.title,
-              routeMeta: routeMeta,
-              routeFields: routeFields,
-              routeFieldsForDropdown: routeFieldsForDropdown,
-              groupsMeta: groupsMeta,
-              onDropdownRouteFieldChanged: setRouteFieldForDropdown
-            );
-          }
-          // last element is always the submission area
-          if (index == len - 1) {
-            return _buildSubmissionArea();
-          }
-          int stopIndex = index - 1;
-          String thisStopTitle = ids[stopIndex];
-          return ActiveRouteStop(
-            cardTextStyle: cardTextStyle,
-            title: thisStopTitle,
-            stopMeta: stopMeta,
-            stopFieldsMeta: stopFieldsMeta,
-            enabled: !allPreviousSaves.contains(thisStopTitle),
-            stopFieldsForDropdown: stopFieldsForDropdown,
-            stopFields: stopFields,
-            groupsMeta: groupsMeta,
-            onDropdownStopFieldChanged: setStopFieldForDropdown
-          );
-        }
+      child: ListView(
+        children: listViewChildren
       )
     );
   }
