@@ -6,7 +6,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:route_recorder/views/loading.dart';
-import 'package:route_recorder/views/route.dart';
+import 'package:route_recorder/views/active_route.dart';
 import 'package:route_recorder/views/select_route.dart';
 import 'classes.dart';
 

@@ -57,7 +57,7 @@ class _SelectRouteState extends State<SelectRoute> {
   void getModels() {
     getAllRoutes().then((RoutesRetrieval mostRecentRoutes) {
       /// Get all groups to prep the Firebase cache. This won't be used
-      /// explicitly in select_route, but groups will be used in route.dart.
+      /// in select_route, but groups will be used in active_route.dart
       if (!mostRecentRoutes.fromCache) {
         getAllGroups();
       }

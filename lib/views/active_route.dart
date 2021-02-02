@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:route_recorder/api.dart';
 import 'package:route_recorder/classes.dart';
+import 'package:route_recorder/views/active_route_widgets/active_route_stop.dart';
+import 'package:route_recorder/views/active_route_widgets/active_route_title_card.dart';
 import 'package:route_recorder/views/loading.dart';
 
 class ActiveRoute extends StatefulWidget {
@@ -65,6 +67,8 @@ class ActiveRouteState extends State<ActiveRoute> {
 
   @override
   void initState() {
+    // If there is no active route, we have arrived here on error, so return to
+    // selection screen.
     if (widget.activeRoute == null) {
       widget.resetRoute();
     }
@@ -86,6 +90,22 @@ class ActiveRouteState extends State<ActiveRoute> {
     });
 
     super.dispose();
+  }
+
+  /// Sets the value of ONE of the route-level dropdown fields i.e. fields
+  /// in the title card which use dropdowns.
+  setRouteFieldForDropdown(String key, String value) {
+    setState(() {
+      routeFieldsForDropdown[key] = value;
+    });
+  }
+
+  /// Sets the value of ONE of the stop-level dropdown fields i.e. fields
+  /// in a stop which use dropdowns.
+  setStopFieldForDropdown(String stopTitle, String stopFieldTitle, String value) {
+    setState(() {
+      stopFieldsForDropdown[stopTitle][stopFieldTitle] = value;
+    });
   }
 
   initRouteState() async {
@@ -546,94 +566,9 @@ class ActiveRouteState extends State<ActiveRoute> {
     );
   }
 
-  /// Builds the upper portion of the screen, the part of the form that displays
-  /// route information, and gathers user entry about the route overall (and
-  /// not individual stops).
-  Widget _buildRouteTitleCard() {
-    List<Widget> theseFields = [];
-    routeMeta.forEach((String fieldName, ModelField mf) {
-      if (mf.type == FieldDataType.select) {
-        theseFields.add(
-          DropdownButtonFormField<String>(
-            validator: (String value) {
-              if (value == null && !mf.optional) {
-                return 'Please enter a $fieldName.';
-              }
-              return null;
-            },
-            value: routeFieldsForDropdown[fieldName],
-            hint: Text(fieldName),
-            icon: Icon(Icons.arrow_drop_down),
-            onChanged: (String newValue) {
-              setState(() {
-                routeFieldsForDropdown[fieldName] = newValue;
-              });
-            },
-            items: groupsMeta[mf.groupId].members.map((String member) =>
-              DropdownMenuItem<String>(
-                value: member,
-                child: Text(member)
-              )
-            ).toList(),
-          )
-        );
-      } else {
-        TextInputType thisKeyboardType = routeMeta[fieldName].type == FieldDataType.number
-          ? TextInputType.number
-          : TextInputType.text;
-        theseFields.add(
-          TextFormField(
-            controller: routeFields[fieldName],
-            validator: (value) {
-              if (value.isEmpty && !mf.optional) {
-                return 'Please enter a $fieldName.';
-              }
-              return null;
-            },
-            decoration: InputDecoration(
-              hintText: mf.optional
-                ? '$fieldName (optional)'
-                : fieldName
-            ),
-            keyboardType: thisKeyboardType,
-          )
-        );
-      }
-    });
-
-    return Card(
-      child: Container(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-          children: <Widget>[
-            Text(
-              widget.activeRoute.title,
-              style: cardTextStyle,
-            ),
-            Text(
-              'Your start and end times for this route will be recorded automatically.',
-              style: cardTextStyle.copyWith(
-                fontSize: cardTextStyle.fontSize - 4.0
-              ),
-            ),
-            Text(
-              'If you\'re resuming a partially-completed route, the stops that have already been visited will be locked.',
-              style: cardTextStyle.copyWith(
-                fontSize: cardTextStyle.fontSize - 4.0
-              ),
-              textAlign: TextAlign.center,
-            ),
-            ...theseFields
-          ]
-        )
-      )
-    );
-  }
-
   /// Builds the part of the form that gathers user entry about stops along the
   /// route.
   Widget _buildStops() {
-    List<String> ids = stopFieldsMeta.keys.toList();
     // get stops included by all previous saves so we know if there are stops to grey out
     List<String> allPreviousSaves = [];
     if (widget.activeRouteSavedData != null) {
@@ -641,106 +576,20 @@ class ActiveRouteState extends State<ActiveRoute> {
         allPreviousSaves.addAll(rso.stops);
       });
     }
+    // build list of stops
+    List<String> ids = stopFieldsMeta.keys.toList();
     return Column(
       children: ids.map((String stopTitle) {
-        bool thisStopEnabled = !allPreviousSaves.contains(stopTitle);
-        List<Widget> fieldsForUserEntry = [];
-        stopFieldsMeta[stopTitle].forEach((String stopFieldTitle, StopField sf) {
-          // don't include fields excluded by this stop
-          if (stopMeta[stopTitle].exclude != null && stopMeta[stopTitle].exclude.contains(stopFieldTitle)) {
-            return;
-          }
-          if (sf.type == FieldDataType.select) {
-            fieldsForUserEntry.add(
-              DropdownButtonFormField<String>(
-                validator: (String value) {
-                  if (value == null && !sf.optional) {
-                    return 'Please enter a $stopFieldTitle.';
-                  }
-                  return null;
-                },
-                value: stopFieldsForDropdown[stopTitle][stopFieldTitle],
-                // display already-entered data if resuming route and this is disabled
-                hint: thisStopEnabled
-                  ? Text(stopFieldTitle)
-                  : stopFieldsForDropdown[stopTitle][stopFieldTitle] ?? Text(stopFieldTitle),
-                icon: Icon(Icons.arrow_drop_down),
-                onChanged: thisStopEnabled
-                  ? (String newValue) {
-                      setState(() {
-                        stopFieldsForDropdown[stopTitle][stopFieldTitle] = newValue;
-                      });
-                    }
-                  : null,
-                items: groupsMeta[sf.groupId].members.map((String member) =>
-                  DropdownMenuItem<String>(
-                    value: member,
-                    child: Text(member)
-                  )
-                ).toList(),
-              )
-            );
-          } else {
-            TextInputType thisKeyboardType = sf.type == FieldDataType.number
-              ? TextInputType.number
-              : TextInputType.text;
-            fieldsForUserEntry.add(
-              TextFormField(
-                controller: stopFields[stopTitle][stopFieldTitle],
-                enabled: thisStopEnabled,
-                validator: (value) {
-                  if (value.isEmpty && !sf.optional) {
-                    return 'Please enter a $stopFieldTitle.';
-                  }
-                  return null;
-                },
-                decoration: InputDecoration(
-                  hintText: sf.optional ? '$stopFieldTitle (optional)' : stopFieldTitle
-                ),
-                keyboardType: thisKeyboardType,
-              )
-            );
-          }
-        });
-        return Card(
-          child: Container(
-            padding: const EdgeInsets.all(10.0),
-            child: Row(
-              children: <Widget>[
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.3,
-                  child: Container(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      children: <Widget>[
-                        Text(
-                          stopMeta[stopTitle].title,
-                          style: cardTextStyle.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        stopMeta[stopTitle].description != null && stopMeta[stopTitle].description.trim().length > 0
-                          ? Text(
-                              '${stopMeta[stopTitle].description}',
-                              style: cardTextStyle.copyWith(
-                                fontSize: cardTextStyle.fontSize - 2.0
-                              ),
-                              textAlign: TextAlign.center,
-                            )
-                          : null
-                      ].where((o) => o != null).toList(),
-                    ),
-                  ),
-                ),
-                Expanded(
-                 child: Column(
-                    children: fieldsForUserEntry
-                  )
-                )
-              ],
-            ),
-          ),
+        return ActiveRouteStop(
+          cardTextStyle: cardTextStyle,
+          title: stopTitle,
+          stopMeta: stopMeta,
+          stopFieldsMeta: stopFieldsMeta,
+          enabled: !allPreviousSaves.contains(stopTitle),
+          stopFieldsForDropdown: stopFieldsForDropdown,
+          stopFields: stopFields,
+          groupsMeta: groupsMeta,
+          onDropdownStopFieldChanged: setStopFieldForDropdown
         );
       }).toList()
     );
@@ -807,7 +656,15 @@ class ActiveRouteState extends State<ActiveRoute> {
           key: _formKey,
           child: Column(
             children: <Widget>[
-              _buildRouteTitleCard(),
+              ActiveRouteTitleCard(
+                cardTextStyle: cardTextStyle,
+                title: widget.activeRoute.title,
+                routeMeta: routeMeta,
+                routeFields: routeFields,
+                routeFieldsForDropdown: routeFieldsForDropdown,
+                groupsMeta: groupsMeta,
+                onDropdownRouteFieldChanged: setRouteFieldForDropdown
+              ),
               _buildStops(),
               _buildSubmissionArea(context)
             ],
