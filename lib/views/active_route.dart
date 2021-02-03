@@ -662,40 +662,42 @@ class ActiveRouteState extends State<ActiveRoute> {
     int len = 2 + stopMeta.length;
     return Container(
       padding: const EdgeInsets.only(left: 10.0, right: 10.0, top: 30.0, bottom: 10.0),
-      // Listview *works*, but validation doesn't, since some form fields are NULL.
-      child: ListView.builder(
-        itemCount: len,
-        itemBuilder: (context, index) {
-          // first element is always the title card
-          if (index == 0) {
-            return ActiveRouteTitleCard(
+      child: Form(
+        key: _formKey,
+        child: ListView.builder(
+          itemCount: len,
+          itemBuilder: (context, index) {
+            // first element is always the title card
+            if (index == 0) {
+              return ActiveRouteTitleCard(
+                cardTextStyle: cardTextStyle,
+                title: widget.activeRoute.title,
+                routeMeta: routeMeta,
+                routeFields: routeFields,
+                routeFieldsForDropdown: routeFieldsForDropdown,
+                groupsMeta: groupsMeta,
+                onDropdownRouteFieldChanged: setRouteFieldForDropdown
+              );
+            }
+            // last element is always the submission area
+            if (index == len - 1) {
+              return _buildSubmissionArea();
+            }
+            int stopIndex = index - 1;
+            String thisStopTitle = ids[stopIndex];
+            return ActiveRouteStop(
               cardTextStyle: cardTextStyle,
-              title: widget.activeRoute.title,
-              routeMeta: routeMeta,
-              routeFields: routeFields,
-              routeFieldsForDropdown: routeFieldsForDropdown,
+              title: thisStopTitle,
+              stopMeta: stopMeta,
+              stopFieldsMeta: stopFieldsMeta,
+              enabled: !allPreviousSaves.contains(thisStopTitle),
+              stopFieldsForDropdown: stopFieldsForDropdown,
+              stopFields: stopFields,
               groupsMeta: groupsMeta,
-              onDropdownRouteFieldChanged: setRouteFieldForDropdown
+              onDropdownStopFieldChanged: setStopFieldForDropdown
             );
           }
-          // last element is always the submission area
-          if (index == len - 1) {
-            return _buildSubmissionArea();
-          }
-          int stopIndex = index - 1;
-          String thisStopTitle = ids[stopIndex];
-          return ActiveRouteStop(
-            cardTextStyle: cardTextStyle,
-            title: thisStopTitle,
-            stopMeta: stopMeta,
-            stopFieldsMeta: stopFieldsMeta,
-            enabled: !allPreviousSaves.contains(thisStopTitle),
-            stopFieldsForDropdown: stopFieldsForDropdown,
-            stopFields: stopFields,
-            groupsMeta: groupsMeta,
-            onDropdownStopFieldChanged: setStopFieldForDropdown
-          );
-        }
+        )
       )
     );
   }
