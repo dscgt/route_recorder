@@ -37,12 +37,6 @@ class ActiveRouteStop extends StatelessWidget {
       if (sf.type == FieldDataType.select) {
         fieldsForUserEntry.add(
             DropdownButtonFormField<String>(
-              validator: (String value) {
-                if (value == null && !sf.optional) {
-                  return 'Please enter a $stopFieldTitle.';
-                }
-                return null;
-              },
               value: stopFieldsForDropdown[title][stopFieldTitle],
               // display already-entered data if resuming route and this is disabled
               hint: enabled
@@ -70,12 +64,6 @@ class ActiveRouteStop extends StatelessWidget {
             TextFormField(
               controller: stopFields[title][stopFieldTitle],
               enabled: enabled,
-              validator: (value) {
-                if (value.isEmpty && !sf.optional) {
-                  return 'Please enter a $stopFieldTitle.';
-                }
-                return null;
-              },
               decoration: InputDecoration(
                   hintText: sf.optional ? '$stopFieldTitle (optional)' : stopFieldTitle
               ),

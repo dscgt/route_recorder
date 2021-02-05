@@ -48,14 +48,14 @@ class ActiveRouteState extends State<ActiveRoute> {
   /// A map of a stop's title -> its Stop. Useful for faster repeated metadata
   /// lookups, and also serves as an ordered master list of stops.
   Map<String, Stop> stopMeta;
-  /// A map of a stop's title -> another map, keyed by a stop's field's name ->
+  /// A map of a stop's title -> another map, keyed by a stop's field's title ->
   /// its StopField. Useful for faster metadata lookups, and also serves as
   /// an ordered master list of stop fields.
   Map<String, Map<String, StopField>> stopFieldsMeta;
-  /// A map of a stop's title -> another map, keyed by a stop's field's name ->
+  /// A map of a stop's title -> another map, keyed by a stop's field's title ->
   /// text controller for user's response.
   Map<String, Map<String, TextEditingController>> stopFields;
-  /// A map of a stop's title -> another map, keyed by a stop's field's name ->
+  /// A map of a stop's title -> another map, keyed by a stop's field's title ->
   /// dropdown values. For user responses that require a dropdown.
   Map<String, Map<String, String>> stopFieldsForDropdown;
 
@@ -127,7 +127,6 @@ class ActiveRouteState extends State<ActiveRoute> {
       });
       showDialog<ConfirmAction>(
         context: context,
-        barrierDismissible: true,
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Something went wrong. Try to retry below. \nIf this issue persists, report the problem to your supervisors.'),
@@ -160,6 +159,8 @@ class ActiveRouteState extends State<ActiveRoute> {
 
 
     /// Convert data from given widget into forms usable by build process.
+    /// This will initialize a TextEditingController for every non-dropdown
+    /// field, including stop fields.
     widget.activeRoute.fields.forEach((ModelField rr) {
       routeMetaToAdd[rr.title] = rr;
       if (rr.type != FieldDataType.select) {
@@ -231,6 +232,35 @@ class ActiveRouteState extends State<ActiveRoute> {
       startTime = startTimeToAdd;
       groupsMeta = groupsMetaToAdd;
     });
+  }
+
+  /// Returns a list of the names of nonoptional fields which are currently
+  /// empty. Stop fields will be prefixed with the stop title and hyphen ex.
+  /// 'title-fieldname'.
+  List<String> getInvalidFields() {
+    List<String> toReturn = [];
+    // check route-level fields (fields which appear in the top box) for empty
+    // or unselected fields
+    toReturn.addAll(
+      routeMeta.values
+        .where((ModelField mf) => !mf.optional)
+        .where((ModelField mf) => (mf.type != FieldDataType.select && routeFields[mf.title].text.isEmpty)
+          || (mf.type == FieldDataType.select && !routeFieldsForDropdown.containsKey(mf.title)))
+        .map((ModelField mf) => mf.title)
+    );
+    // check stop-level fields (fields which appear in stops) for empty
+    // or unselected fields
+    stopFieldsMeta.forEach((String stopTitle, Map<String, StopField> fields) {
+      toReturn.addAll(
+        fields.values
+          .where((StopField sf) => !sf.optional)
+          .where((StopField sf) => !stopMeta[stopTitle].exclude.contains(sf.title))
+          .where((StopField sf) => (sf.type != FieldDataType.select && stopFields[stopTitle][sf.title].text.isEmpty)
+            || (sf.type == FieldDataType.select && !stopFieldsForDropdown[stopTitle].containsKey(sf.title)))
+          .map((StopField sf) => '$stopTitle--${sf.title}')
+      );
+    });
+    return toReturn;
   }
 
   /// Takes inputs of state and converts to a Record.
@@ -399,7 +429,6 @@ class ActiveRouteState extends State<ActiveRoute> {
       });
       showDialog<ConfirmAction>(
         context: context,
-        barrierDismissible: true,
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Something went wrong. Wait a bit, then try to submit it again. \nIf this issue persists, keep this screen open or write it down, and report the problem to your supervisors.'),
@@ -447,7 +476,6 @@ class ActiveRouteState extends State<ActiveRoute> {
       print('Stacktrace: $st');
       showDialog<ConfirmAction>(
         context: context,
-        barrierDismissible: true,
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Something went wrong. Wait a bit, then try to submit it again. Try moving to an area with a better connection.\nIf this issue persists, keep this screen open or write it down, and report the problem to your supervisors.'),
@@ -483,7 +511,6 @@ class ActiveRouteState extends State<ActiveRoute> {
   void _handleCancelRoute() {
     showDialog<ConfirmAction>(
       context: context,
-      barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Are you sure you want to cancel? All newly-entered data will be lost.'),
@@ -510,7 +537,6 @@ class ActiveRouteState extends State<ActiveRoute> {
   void _handleSaveRouteForLater() {
     showDialog<ConfirmAction>(
       context: context,
-      barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Are you sure you want to save this for later? You can resume it later. If someone else will be resuming it, they can resume it from their tablet.'),
@@ -536,13 +562,29 @@ class ActiveRouteState extends State<ActiveRoute> {
 
   void _handleFinishRoute() async {
     /// Validation check.
-    if (!_formKey.currentState.validate()) {
+    List<String> invalidFields = getInvalidFields();
+    if (invalidFields.length != 0) {
+      showDialog<ConfirmAction>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('The following fields still need to be filled out: ${invalidFields.join(", ")}'),
+            actions: <Widget>[
+              FlatButton(
+                onPressed: () {
+                  Navigator.of(context).pop(ConfirmAction.CANCEL);
+                },
+                child: const Text('OKAY'),
+              ),
+            ],
+          );
+        }
+      );
       return;
     }
 
     showDialog<ConfirmAction>(
       context: context,
-      barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Are you sure you want to submit this?'),
@@ -563,35 +605,6 @@ class ActiveRouteState extends State<ActiveRoute> {
           ],
         );
       }
-    );
-  }
-
-  /// Builds the part of the form that gathers user entry about stops along the
-  /// route.
-  Widget _buildStops() {
-    // get stops included by all previous saves so we know if there are stops to grey out
-    List<String> allPreviousSaves = [];
-    if (widget.activeRouteSavedData != null) {
-      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
-        allPreviousSaves.addAll(rso.stops);
-      });
-    }
-    // build list of stops
-    List<String> ids = stopFieldsMeta.keys.toList();
-    return Column(
-      children: ids.map((String stopTitle) {
-        return ActiveRouteStop(
-          cardTextStyle: cardTextStyle,
-          title: stopTitle,
-          stopMeta: stopMeta,
-          stopFieldsMeta: stopFieldsMeta,
-          enabled: !allPreviousSaves.contains(stopTitle),
-          stopFieldsForDropdown: stopFieldsForDropdown,
-          stopFields: stopFields,
-          groupsMeta: groupsMeta,
-          onDropdownStopFieldChanged: setStopFieldForDropdown
-        );
-      }).toList()
     );
   }
 
