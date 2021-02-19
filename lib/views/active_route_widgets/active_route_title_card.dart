@@ -30,12 +30,6 @@ class ActiveRouteTitleCard extends StatelessWidget {
       if (mf.type == FieldDataType.select) {
         theseFields.add(
           DropdownButtonFormField<String>(
-            validator: (String value) {
-              if (value == null && !mf.optional) {
-                return 'Please enter a $fieldName.';
-              }
-              return null;
-            },
             value: routeFieldsForDropdown[fieldName],
             hint: Text(fieldName),
             icon: Icon(Icons.arrow_drop_down),
@@ -57,12 +51,6 @@ class ActiveRouteTitleCard extends StatelessWidget {
         theseFields.add(
           TextFormField(
             controller: routeFields[fieldName],
-            validator: (value) {
-              if (value.isEmpty && !mf.optional) {
-                return 'Please enter a $fieldName.';
-              }
-              return null;
-            },
             decoration: InputDecoration(
               hintText: mf.optional
                 ? '$fieldName (optional)'
