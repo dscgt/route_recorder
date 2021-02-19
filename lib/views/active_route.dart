@@ -244,7 +244,7 @@ class ActiveRouteState extends State<ActiveRoute> {
     toReturn.addAll(
       routeMeta.values
         .where((ModelField mf) => !mf.optional)
-        .where((ModelField mf) => (mf.type != FieldDataType.select && routeFields[mf.title].text.isEmpty)
+        .where((ModelField mf) => (mf.type != FieldDataType.select && (routeFields[mf.title].text.isEmpty || routeFields[mf.title].text.trim().isEmpty))
           || (mf.type == FieldDataType.select && !routeFieldsForDropdown.containsKey(mf.title)))
         .map((ModelField mf) => mf.title)
     );
@@ -255,7 +255,7 @@ class ActiveRouteState extends State<ActiveRoute> {
         fields.values
           .where((StopField sf) => !sf.optional)
           .where((StopField sf) => !stopMeta[stopTitle].exclude.contains(sf.title))
-          .where((StopField sf) => (sf.type != FieldDataType.select && stopFields[stopTitle][sf.title].text.isEmpty)
+          .where((StopField sf) => (sf.type != FieldDataType.select && (stopFields[stopTitle][sf.title].text.isEmpty || stopFields[stopTitle][sf.title].text.trim().isEmpty))
             || (sf.type == FieldDataType.select && !stopFieldsForDropdown[stopTitle].containsKey(sf.title)))
           .map((StopField sf) => '$stopTitle--${sf.title}')
       );
