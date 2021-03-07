@@ -22,7 +22,7 @@ This is part of a suite of apps made for Georgia Tech's [OSWM&R](http://www.recy
 * the [Firebase CLI](https://firebase.google.com/docs/cli)
 * access to our Firebase console
 * read/write access to this Github repo
-* read/write access to our [private Github repo](https://github.gatech.edu/dscgt/recycling_checkin_dist)
+* read/write access to our [private Github repo](https://github.gatech.edu/dscgt/route_recorder_dist)
 * credentials (see below)
 
 ### Getting your credentials
