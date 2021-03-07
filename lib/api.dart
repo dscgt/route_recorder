@@ -6,12 +6,21 @@ import 'package:sembast/sembast.dart';
 import 'package:sembast_web/sembast_web.dart';
 
 FirebaseFirestore firestore = FirebaseFirestore.instance;
+final String firestoreEmulatorUrl = 'localhost:8080';
 final String modelsCollectionName = 'route_models';
 final String recordsCollectionName = 'route_records';
 final String unfinishedRecordsCollectionName = 'route_records_in_progress';
 final String groupsCollectionName = 'route_groups';
 
 final String savedRouteDbName = 'route';
+
+void init() {
+  // if development environment, switch to use Firestore emulator
+  const String env = String.fromEnvironment('ENVIRONMENT');
+  if (env == 'development') {
+    firestore.settings = Settings(host: firestoreEmulatorUrl, sslEnabled: false);
+  }
+}
 
 /// Gets an accessor for the Sembast local data storage
 Future<Database> getLocalDb() async {
