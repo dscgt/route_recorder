@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:route_recorder/api.dart';
 import 'package:route_recorder/classes.dart';
@@ -26,6 +28,8 @@ class ActiveRoute extends StatefulWidget {
 enum ConfirmAction { CANCEL, CONFIRM }
 
 class ActiveRouteState extends State<ActiveRoute> {
+
+  static const UPDATE_WAIT = 5;
 
   TextStyle cardTextStyle = TextStyle(
     fontSize: 18.0
@@ -65,6 +69,9 @@ class ActiveRouteState extends State<ActiveRoute> {
   /// The time when this route was started by the user.
   DateTime startTime;
 
+  /// Timer for blocking data backups
+  Timer saver;
+
   @override
   void initState() {
     // If there is no active route, we have arrived here on error, so return to
@@ -88,6 +95,11 @@ class ActiveRouteState extends State<ActiveRoute> {
         controller.dispose();
       });
     });
+
+    // Clean up timer
+    if (saver != null && saver.isActive) {
+      saver.cancel();
+    }
 
     super.dispose();
   }
@@ -267,7 +279,12 @@ class ActiveRouteState extends State<ActiveRoute> {
   /// If [forSaving] is true, null and empty fields will be excluded,
   /// 'saves' property will be handled differently, and there won't be an
   /// end time. This is meant for routes to be saved for later.
-  Record formatInputsForDb(bool forSaving) {
+  /// If [forLocal] is true, forSaving is assumed to be true, and there will
+  /// not be 'saves'. This is meant for locally backed-up routes.
+  Record formatInputsForDb(bool forSaving, bool forLocal) {
+    if (forLocal) {
+      forSaving = true;
+    }
     // Create a submission object from info entered by user.
     // start by handling top-level fields
     Map<String, String> propertiesToAdd = {};
@@ -343,50 +360,52 @@ class ActiveRouteState extends State<ActiveRoute> {
     }
     DateTime sessionEnd = DateTime.now();
     // start building updated 'saves',
-    List<String> stopTitlesToSave;
-    if (forSaving) {
-      // ONLY include a stop in 'saves' if ALL of its nonoptional, nonexcluded fields have been
-      // filled out. Remember, once a stop is in 'saves' it is greyed out in
-      // further resumes!
-      stopTitlesToSave = [];
-      stopsToAddAsList.forEach((RecordStop rs) {
-        bool shouldAddThisStopToSave = true;
-        stopFieldsMeta[rs.title].forEach((String fieldTitle, StopField sf) {
-          // translation: if this stop field is not option, AND it's not excluded from this stop, AND this stop field has no value
-          if (!sf.optional && !stopMeta[rs.title].exclude.contains(fieldTitle) && !rs.properties.containsKey(fieldTitle)) {
-            shouldAddThisStopToSave = false;
+    if (!forLocal) {
+      List<String> stopTitlesToSave;
+      if (forSaving) {
+        // ONLY include a stop in 'saves' if ALL of its nonoptional, nonexcluded fields have been
+        // filled out. Remember, once a stop is in 'saves' it is greyed out in
+        // further resumes!
+        stopTitlesToSave = [];
+        stopsToAddAsList.forEach((RecordStop rs) {
+          bool shouldAddThisStopToSave = true;
+          stopFieldsMeta[rs.title].forEach((String fieldTitle, StopField sf) {
+            // translation: if this stop field is not option, AND it's not excluded from this stop, AND this stop field has no value
+            if (!sf.optional && !stopMeta[rs.title].exclude.contains(fieldTitle) && !rs.properties.containsKey(fieldTitle)) {
+              shouldAddThisStopToSave = false;
+            }
+          });
+          if (shouldAddThisStopToSave) {
+            stopTitlesToSave.add(rs.title);
           }
         });
-        if (shouldAddThisStopToSave) {
-          stopTitlesToSave.add(rs.title);
-        }
-      });
-    } else {
-      // since we are submitting this route, these are just all titles that weren't covered
-      // by previous saves
-      stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
-      rs.properties.length > 0
-          ? rs.title
-          : null
-      ).toList();
-      stopTitlesToSave.removeWhere((String s) => s == null);
-    }
-    // remove titles that belong to previous saves, if any exist
-    if (widget.activeRouteSavedData != null) {
-      widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
-        rso.stops.forEach((String s) {
-          int ind = stopTitlesToSave.indexOf(s);
-          if (ind != -1) {
-            stopTitlesToSave.removeAt(ind);
-          }
+      } else {
+        // since we are submitting this route, these are just all titles that weren't covered
+        // by previous saves
+        stopTitlesToSave = stopsToAddAsList.map((RecordStop rs) =>
+        rs.properties.length > 0
+            ? rs.title
+            : null
+        ).toList();
+        stopTitlesToSave.removeWhere((String s) => s == null);
+      }
+      // remove titles that belong to previous saves, if any exist
+      if (widget.activeRouteSavedData != null) {
+        widget.activeRouteSavedData.saves.forEach((RecordSaveObject rso) {
+          rso.stops.forEach((String s) {
+            int ind = stopTitlesToSave.indexOf(s);
+            if (ind != -1) {
+              stopTitlesToSave.removeAt(ind);
+            }
+          });
         });
-      });
-    }
-    // add current save to previous saves, if any exist
-    newSaves.add(RecordSaveObject(
+      }
+      // add current save to previous saves, if any exist
+      newSaves.add(RecordSaveObject(
         stops: stopTitlesToSave,
         saveTime: sessionEnd
-    ));
+      ));
+    }
 
     // don't include end time if this isn't a submission
     DateTime thisEndDate = forSaving
@@ -411,8 +430,8 @@ class ActiveRouteState extends State<ActiveRoute> {
       loadingAfterButtonPress = true;
       isLoading = true;
     });
-
-    Record thisSubmission = formatInputsForDb(true);
+    
+    Record thisSubmission = formatInputsForDb(true, false);
 
     try {
       await saveRecord(UnfinishedRoute(
@@ -420,6 +439,7 @@ class ActiveRouteState extends State<ActiveRoute> {
         model: widget.activeRoute,
         id: widget.activeRouteSavedId
       ));
+      await deleteUnfinishedRouteLocalStorage();
     } catch (e, st) {
       setState(() {
         loadingAfterButtonPress = false;
@@ -458,7 +478,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       loadingAfterButtonPress = true;
       isLoading = true;
     });
-    Record thisSubmission = formatInputsForDb(false);
+    Record thisSubmission = formatInputsForDb(false, false);
     /// Submit this route record, and direct user back to route selection if
     /// successful.
     bool directlySuccessful;
@@ -467,6 +487,7 @@ class ActiveRouteState extends State<ActiveRoute> {
       if (widget.activeRouteSavedId != null) {
         await deleteUnfinishedRecord(widget.activeRouteSavedId);
       }
+      await deleteUnfinishedRouteLocalStorage();
     } catch (e, st) {
       setState(() {
         loadingAfterButtonPress = false;
@@ -508,6 +529,27 @@ class ActiveRouteState extends State<ActiveRoute> {
     widget.resetRoute();
   }
 
+  /// Waits UPDATE_WAIT seconds, then saves current inputs to local storage. If
+  /// there already is a countdown happening, it will be cancelled.
+  void _handleFormChangeForLocalBackup() {
+    // cancel previous countdowns
+    if (saver != null && saver.isActive) {
+      saver.cancel();
+    }
+    // set up timer to handle automatic data saving
+    saver = Timer(Duration(seconds: UPDATE_WAIT), () {
+      Record inProgress = formatInputsForDb(true, true);
+      saveUnfinishedRouteLocalStorage(UnfinishedRoute(
+        record: inProgress,
+        model: widget.activeRoute,
+        id: widget.activeRouteSavedId
+      ));
+      // TODO: save data to local storage here
+      // three methods (submitRoute(), saveRouteForLater(), and eventually whatever method handles local data saving) do the same thing slightly differently.
+      //   violate DRY. should make one method to handle all three.
+    });
+  }
+
   void _handleCancelRoute() {
     showDialog<ConfirmAction>(
       context: context,
@@ -523,8 +565,20 @@ class ActiveRouteState extends State<ActiveRoute> {
             ),
             FlatButton(
               onPressed: () {
-                widget.resetRoute();
-                Navigator.of(context).pop(ConfirmAction.CONFIRM);
+                deleteUnfinishedRouteLocalStorage().then((value) {
+                  widget.resetRoute();
+                  Navigator.of(context).pop(ConfirmAction.CONFIRM);
+                }).catchError((e, st) {
+                  Scaffold.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Something went wrong--notify a supervisor if something keeps happening.')
+                    )
+                  );
+                  print('error: $e');
+                  print('Stacktrace: $st');
+                  widget.resetRoute();
+                  Navigator.of(context).pop(ConfirmAction.CONFIRM);
+                });
               },
               child: const Text('YES'),
             ),
@@ -661,7 +715,6 @@ class ActiveRouteState extends State<ActiveRoute> {
     if (isLoading) {
       return Loading();
     }
-
     // get stops included by all previous saves so we know if there are stops to grey out
     List<String> allPreviousSaves = [];
     if (widget.activeRouteSavedData != null) {

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="route_recorder">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>route_recorder</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+  <!--  Firebase CDNs and configuration -->
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.20.0/firebase-firestore.js"></script>
+  <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyCYftHs5qR8ma2bEpT8NoKdE4lUyMHmbss",
+      authDomain: "gt-recycling.firebaseapp.com",
+      databaseURL: "https://gt-recycling.firebaseio.com",
+      projectId: "gt-recycling",
+      storageBucket: "gt-recycling.appspot.com",
+      messagingSenderId: "619187120497",
+      appId: "1:619187120497:web:89d9ec79b04584f158eed0",
+      measurementId: "G-1821QGB9HR"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <!-- This script installs service_worker.js to provide PWA functionality to
+       application. For more information, see:
+       https://developers.google.com/web/fundamentals/primers/service-workers -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('flutter_service_worker.js');
+      });
+    }
+  </script>
+  <script src="main.dart.js" type="application/javascript"></script>
+</body>
+</html>
