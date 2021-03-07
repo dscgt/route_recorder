@@ -2,12 +2,71 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:route_recorder/utils.dart';
 import 'package:route_recorder/classes.dart' as Classes;
+import 'package:sembast/sembast.dart';
+import 'package:sembast_web/sembast_web.dart';
 
 FirebaseFirestore firestore = FirebaseFirestore.instance;
 final String modelsCollectionName = 'route_models';
 final String recordsCollectionName = 'route_records';
 final String unfinishedRecordsCollectionName = 'route_records_in_progress';
 final String groupsCollectionName = 'route_groups';
+
+final String savedRouteDbName = 'route';
+
+/// Gets an accessor for the Sembast local data storage
+Future<Database> getLocalDb() async {
+  var factory = databaseFactoryWeb;
+  var db = await factory.openDatabase('route_recorder_storage');
+  return db;
+}
+
+/// Gets the locally stored unfinished route. The future will resolve to null
+/// if there is no locally stored unfinished route.
+Future<Classes.UnfinishedRoute> getUnfinishedRouteLocalStorage() async {
+  StoreRef store = stringMapStoreFactory.store();
+  Database localDb = await getLocalDb();
+
+  var route = await store.record(savedRouteDbName).get(localDb);
+
+  if (route == null) {
+    return null;
+  }
+
+  Classes.UnfinishedRoute toReturn = Classes.UnfinishedRoute.fromMap(route);
+  return toReturn;
+}
+
+/// Saves an unfinished route to local storage. Deletes any existing version of
+/// the record.
+Future<dynamic> saveUnfinishedRouteLocalStorage(Classes.UnfinishedRoute unfinishedRoute) async {
+  StoreRef store = stringMapStoreFactory.store();
+  Database localDb = await getLocalDb();
+
+  Map<String, dynamic> toAdd = unfinishedRoute.toMap();
+  // Convert DateTime's to UNIX timestamps
+  toAdd['record']['startTime'] = (toAdd['record']['startTime'].millisecondsSinceEpoch / 1000).round();
+  toAdd['record']['saves'].forEach((Map<String, dynamic> saveObject) {
+    saveObject['saveTime'] = (saveObject['saveTime'].millisecondsSinceEpoch / 1000).round();
+  });
+  // Convert enums to strings
+  toAdd['model']['fields'].forEach((Map modelFields) {
+    modelFields['type'] = fieldDataTypeToString(modelFields['type']);
+  });
+  toAdd['model']['stopData']['fields'].forEach((Map modelFields) {
+    modelFields['type'] = fieldDataTypeToString(modelFields['type']);
+  });
+
+  return store.record(savedRouteDbName).put(localDb, toAdd);
+}
+
+/// Saves an unfinished route to local storage. Deletes any existing version of
+/// the record.
+Future<dynamic> deleteUnfinishedRouteLocalStorage() async {
+  StoreRef store = stringMapStoreFactory.store();
+  Database localDb = await getLocalDb();
+
+  return store.record(savedRouteDbName).delete(localDb);
+}
 
 /// Get route models from Firebase, and convert to a format that the app can
 /// use.

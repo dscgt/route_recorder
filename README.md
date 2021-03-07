@@ -9,7 +9,7 @@ This is part of a suite of apps made for Georgia Tech's [OSWM&R](http://www.recy
 
 ## Deployment
 
-The current deployment method builds this Flutter project as a webapp and deploys it with Github Pages. Do this with the `web-deploy` branch. More information [here](https://flutter.dev/docs/get-started/web#create-and-run) and [here](https://flutter.dev/docs/deployment/web).
+The current deployment method builds this Flutter project as a webapp and deploys it with Github Pages. More information [here](https://flutter.dev/docs/get-started/web#create-and-run) and [here](https://flutter.dev/docs/deployment/web).
 
 1. Make sure our [private Github repo](https://github.gatech.edu/dscgt/route_recorder_dist) is cloned to your machine
 1. Build this app for the web with `flutter build web`

@@ -46,11 +46,23 @@ class _SelectRouteState extends State<SelectRoute> {
   /// Error status of the page.
   bool errored = false;
 
-
   @override
   void initState() {
-    getModels();
-    getUnfinished();
+    getUnfinishedRouteLocalStorage().then((UnfinishedRoute result) {
+      if (result != null) {
+        widget.setActiveRoute(result.model, result.record, result.id);
+        widget.changeRoute(AppView.ACTIVE_ROUTE);
+      } else {
+        getModels();
+        getUnfinished();
+      }
+    }).catchError((Object error, StackTrace st) {
+      print('error: $error');
+      print('Stacktrace: $st');
+      infoText = error.toString();
+      errored = true;
+      loading = false;
+    });
     super.initState();
   }
 
