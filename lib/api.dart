@@ -6,12 +6,158 @@ import 'package:sembast/sembast.dart';
 import 'package:sembast_web/sembast_web.dart';
 
 FirebaseFirestore firestore = FirebaseFirestore.instance;
+final String firestoreEmulatorUrl = 'localhost:8080';
 final String modelsCollectionName = 'route_models';
 final String recordsCollectionName = 'route_records';
 final String unfinishedRecordsCollectionName = 'route_records_in_progress';
 final String groupsCollectionName = 'route_groups';
 
 final String savedRouteDbName = 'route';
+
+void init() {
+  // if development environment, switch to use Firestore emulator
+  const String env = String.fromEnvironment('ENVIRONMENT');
+  if (env == 'development') {
+    firestore.settings = Settings(host: firestoreEmulatorUrl, sslEnabled: false);
+  }
+  sampledata();
+}
+
+void sampledata() {
+  firestore.collection(modelsCollectionName).add({
+    "title": "Test Model",
+    "fields": [
+      {
+        'title': "Crewmember name",
+        'type': 'select',
+        'groupId': 'REPLACE_ME'
+      },
+      {
+        'title': "Tonnage",
+        'type': 'string'
+      },
+      {
+        'title': "Overall comments",
+        'type': 'string'
+      },
+    ],
+    "stopData": {
+      "stops": [
+        {
+          "title": "EBB_test",
+          'description': '948 Atlantic Dr'
+        },
+        {
+          "title": "Landscape Services_test",
+          'description': '947 Atlantic Dr'
+        },
+        {
+          "title": "Savant_test",
+          'description': '613 Cherry St',
+          'exclude': [
+            'Comments'
+          ]
+        },
+        {
+          "title": "CRC_test",
+          'description': '750 Ferst Dr'
+        },
+      ],
+      "fields": [
+        {
+          "title": "Number of bags",
+          'type': 'number'
+        },
+        {
+          "title": "Comments",
+          'type': 'string',
+          'optional': true
+        },
+      ]
+    }
+  });
+  firestore.collection(modelsCollectionName).add({
+    "title": "Daily 1",
+    "fields": [
+      {
+        'title': 'Crewmember name',
+        'type': 'select',
+        'groupId': "REPLACE_ME"
+      },
+      {
+        'title': 'Overall comments',
+        'type': 'string',
+        'optional': true
+      }
+    ],
+    "stopData": {
+      "stops": [
+        {
+          'title': 'Clough (Indoor)',
+          'description': '22 locations'
+        },
+        {
+          'title': 'Clough (Outdoor)',
+          'description': '4 locations'
+        },
+        {
+          'title': 'Student Center/Commons',
+          'description': '9 locations',
+          'exclude': [
+            'Number of bags (office paper)'
+          ]
+        },
+        {
+          'title': 'Student Commons (Outdoor)',
+          'description': '1 locations'
+        },
+        {
+          'title': 'Student Success Center',
+          'description': '4 locations',
+          'exclude': [
+            'Number of bags (office paper)'
+          ]
+        },
+        {
+          'title': 'Crosland Tower',
+          'description': '16 locations'
+        },
+      ],
+      'fields': [
+        {
+          'title': 'Number of bags (office paper)',
+          'type': 'number',
+        },
+        {
+          'title': 'Number of bags (plastic)',
+          'type': 'number',
+        },
+        {
+          'title': 'Number of bags (aluminium)',
+          'type': 'number',
+        },
+        {
+          'title': 'Comments',
+          'type': 'string',
+          'optional': true
+        },
+      ]
+    }
+  });
+  firestore.collection(groupsCollectionName).add({
+    'members': [
+      {
+        'title': 'Michael_TEST'
+      },
+      {
+        'title': 'Michelle_TEST'
+      },
+      {
+        'title': 'Captain_America_TEST'
+      }
+    ]
+  });
+}
 
 /// Gets an accessor for the Sembast local data storage
 Future<Database> getLocalDb() async {

@@ -5,6 +5,7 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:route_recorder/api.dart';
 import 'package:route_recorder/views/loading.dart';
 import 'package:route_recorder/views/active_route.dart';
 import 'package:route_recorder/views/select_route.dart';
@@ -37,7 +38,10 @@ class _MainState extends State<Main> {
 
   // wait for Firebase to initialize before building rest of app
   // From https://firebase.flutter.dev/docs/overview/#initializing-flutterfire
-  final Future<FirebaseApp> _firebaseInitialization = Firebase.initializeApp();
+  final Future<FirebaseApp> _firebaseInitialization = Firebase.initializeApp().then((fa) {
+    init();
+    return fa;
+  });
 
   AppView currentView = AppView.SELECT_ROUTE;
   Model activeRoute;
