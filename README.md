@@ -28,7 +28,7 @@ This is part of a suite of apps made for Georgia Tech's [OSWM&R](http://www.recy
 ### Getting your credentials
 
 1. Go to our [Firebase console settings](https://console.firebase.google.com/u/0/project/gt-recycling/settings/general/)
-1. Retrieve the code for the Firebase config object (Your Apps -> Web apps -> checkin-web -> Firebase SDK Snippet -> Config)
+1. Retrieve the code for the Firebase config object (Your Apps -> Web apps -> recorder-web -> Firebase SDK Snippet -> Config)
 1. Copy the file `web/index-template.html` to a new file, `web/index.html`
    1. Since this file contains your private config, it's been placed into `.gitignore` -- do not attempt to un-ignore it
 1. Replace the `firebaseConfig` variable in `web/index.html` with the Firebase config object
