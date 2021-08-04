@@ -37,6 +37,7 @@ class Main extends StatefulWidget {
 class _MainState extends State<Main> {
 
   // wait for Firebase to initialize before building rest of app
+  // also runs a custom init function -- you can define its actions in api.dart
   // From https://firebase.flutter.dev/docs/overview/#initializing-flutterfire
   final Future<FirebaseApp> _firebaseInitialization = Firebase.initializeApp().then((fa) {
     init();
